@@ -1,16 +1,20 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
 
-export default function KameraPage() {
+type KameraPageProps = {
+  searchParams: {
+    oppgave?: string
+    ansatt?: string
+  }
+}
+
+export default function KameraPage({ searchParams }: KameraPageProps) {
   const [image, setImage] = useState<string | null>(null)
   const [kommentar, setKommentar] = useState("")
-  const searchParams = useSearchParams()
-  const router = useRouter()
 
-  const oppgave = searchParams.get("oppgave") || ""
-  const ansatt = searchParams.get("ansatt") || ""
+  const oppgave = searchParams?.oppgave || ""
+  const ansatt = searchParams?.ansatt || ""
 
   function handleImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -22,12 +26,12 @@ export default function KameraPage() {
 
   function handleSave() {
     const nyRegistrering = {
-  ansatt,
-  oppgave,
-  kommentar,
-  bilde: image,
-  tidspunkt: new Date().toLocaleString("nb-NO"),
-}
+      ansatt,
+      oppgave,
+      kommentar,
+      bilde: image,
+      tidspunkt: new Date().toLocaleString("nb-NO"),
+    }
 
     const eksisterende = localStorage.getItem("hms-logg")
     const logg = eksisterende ? JSON.parse(eksisterende) : []
@@ -35,7 +39,7 @@ export default function KameraPage() {
     logg.unshift(nyRegistrering)
     localStorage.setItem("hms-logg", JSON.stringify(logg))
 
-    router.push("/logg")
+    window.location.href = "/logg"
   }
 
   return (
