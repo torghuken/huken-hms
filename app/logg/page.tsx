@@ -7,7 +7,7 @@ type LoggItem = {
   oppgave: string
   kommentar: string
   tidspunkt: string
-  bilde?: string
+  bilde?: string | null
 }
 
 export default function LoggPage() {
