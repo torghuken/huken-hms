@@ -1,10 +1,16 @@
 "use client"
-import { useRouter, useSearchParams } from "next/navigation"
 
-export default function OppgavevalgPage() {
+import { useRouter } from "next/navigation"
+
+type OppgavevalgPageProps = {
+  searchParams: {
+    ansatt?: string
+  }
+}
+
+export default function OppgavevalgPage({ searchParams }: OppgavevalgPageProps) {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const ansatt = searchParams.get("ansatt")
+  const ansatt = searchParams?.ansatt || ""
 
   const oppgaver = [
     "🚪 Sjekk nødutganger",
@@ -15,7 +21,7 @@ export default function OppgavevalgPage() {
   ]
 
   return (
-    <main className="flex min-h-screen flex-col items-center bg-black text-white p-6">
+    <main className="flex min-h-screen flex-col items-center bg-black p-6 text-white">
       <h1 className="mt-10 text-3xl font-bold">Velg oppgave</h1>
 
       {ansatt && (
@@ -30,7 +36,7 @@ export default function OppgavevalgPage() {
             key={oppgave}
             onClick={() =>
               router.push(
-                `/kamera?ansatt=${encodeURIComponent(ansatt || "")}&oppgave=${encodeURIComponent(oppgave)}`
+                `/kamera?ansatt=${encodeURIComponent(ansatt)}&oppgave=${encodeURIComponent(oppgave)}`
               )
             }
             className="rounded-xl bg-white p-4 text-lg font-semibold text-black"
