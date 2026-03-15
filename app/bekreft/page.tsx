@@ -1,0 +1,111 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+
+export default function BekreftPage() {
+  const router = useRouter()
+
+  const [ansatt, setAnsatt] = useState("")
+  const [oppgave, setOppgave] = useState("")
+  const [oppgaveBilde, setOppgaveBilde] = useState<string | null>(null)
+  const [employeeId, setEmployeeId] = useState<string | null>(null)
+  const [taskId, setTaskId] = useState<string | null>(null)
+  const [status, setStatus] = useState("")
+  const [flash, setFlash] = useState(false)
+
+  useEffect(() => {
+    setAnsatt(localStorage.getItem("selectedEmployeeName") || "")
+    setOppgave(localStorage.getItem("selectedTaskName") || "")
+    setOppgaveBilde(localStorage.getItem("selectedTaskImageUrl"))
+    setEmployeeId(localStorage.getItem("selectedEmployeeId"))
+    setTaskId(localStorage.getItem("selectedTaskId"))
+  }, [])
+
+  async function lagreBekreftelse() {
+    if (!employeeId || !taskId) {
+      setStatus("Mangler navn eller oppgave")
+      return
+    }
+
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+    try {
+      setFlash(true)
+      setTimeout(() => setFlash(false), 120)
+      setStatus("Lagrer...")
+
+      const logRes = await fetch(`${url}/rest/v1/logs`, {
+        method: "POST",
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
+        },
+        body: JSON.stringify({
+          employee_id: employeeId,
+          task_id: taskId,
+          comment: "Gjort",
+          image_url: null,
+        }),
+      })
+
+      if (!logRes.ok) {
+        const errorText = await logRes.text()
+        setStatus(`Kunne ikke lagre: ${errorText}`)
+        return
+      }
+
+      localStorage.removeItem("selectedTaskId")
+      localStorage.removeItem("selectedTaskName")
+      localStorage.removeItem("selectedTaskImageUrl")
+      localStorage.removeItem("selectedTaskRequiresPhoto")
+
+      router.replace("/oppgave")
+    } catch (err) {
+      setStatus(`Feil: ${String(err)}`)
+    }
+  }
+
+  return (
+    <main className="fixed inset-0 overflow-hidden bg-black text-white">
+      <div
+        className={`pointer-events-none absolute inset-0 bg-white transition-opacity duration-100 ${
+          flash ? "opacity-80" : "opacity-0"
+        }`}
+      />
+
+      <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/70 to-transparent p-5">
+        <p className="text-sm opacity-80">Ansatt: {ansatt}</p>
+        <p className="text-2xl font-semibold">{oppgave}</p>
+      </div>
+
+      <div className="flex h-full w-full flex-col items-center justify-center px-6">
+        {oppgaveBilde && (
+          <img
+            src={oppgaveBilde}
+            alt="Eksempel på oppgaven"
+            className="mb-8 max-h-[50vh] rounded-2xl border border-white/20"
+          />
+        )}
+      </div>
+
+      <div className="absolute inset-x-0 bottom-8 flex items-center justify-center gap-8">
+        <div className="w-16" />
+        <button
+          onClick={lagreBekreftelse}
+          className="h-20 w-20 rounded-full border-4 border-white bg-white/20 shadow-xl"
+        />
+        <div className="w-16" />
+      </div>
+
+      {status && (
+        <div className="absolute left-1/2 top-24 -translate-x-1/2 rounded-full bg-black/70 px-4 py-2 text-sm">
+          {status}
+        </div>
+      )}
+    </main>
+  )
+}

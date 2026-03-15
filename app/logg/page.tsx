@@ -1,51 +1,79 @@
 "use client"
 
 import { useEffect, useState } from "react"
-
-type LoggItem = {
-  ansatt: string
-  oppgave: string
-  kommentar: string
-  tidspunkt: string
-  bilde?: string | null
-}
+import { useRouter } from "next/navigation"
 
 export default function LoggPage() {
-  const [logg, setLogg] = useState<LoggItem[]>([])
+  const router = useRouter()
+  const [navn, setNavn] = useState("")
 
   useEffect(() => {
-    const data = localStorage.getItem("hms-logg")
-    if (data) {
-      setLogg(JSON.parse(data))
+    const employeeId = localStorage.getItem("selectedEmployeeId")
+    const employeeName = localStorage.getItem("selectedEmployeeName")
+    const employeeRole = localStorage.getItem("selectedEmployeeRole")
+
+    if (!employeeId) {
+      router.replace("/ansatt")
+      return
     }
-  }, [])
+
+    if (employeeRole !== "leader") {
+      router.replace("/")
+      return
+    }
+
+    setNavn(employeeName || "")
+  }, [router])
 
   return (
-    <main className="min-h-screen bg-black p-6 text-white">
-      <h1 className="mt-10 text-center text-3xl font-bold">HMS-logg</h1>
+    <main className="min-h-screen bg-black px-6 pt-16 text-white">
+      <div className="mx-auto flex max-w-md flex-col items-center">
+        <h1 className="mb-2 text-3xl font-bold">Logg</h1>
+        {navn && <p className="mb-10 text-zinc-400">{navn}</p>}
 
-      <div className="mx-auto mt-10 flex max-w-md flex-col gap-4">
-        {logg.length === 0 ? (
-          <p className="text-center text-zinc-400">Ingen registreringer ennå</p>
-        ) : (
-          logg.map((item, index) => (
-            <div key={index} className="rounded-xl bg-white p-4 text-black">
-              <p><strong>Ansatt:</strong> {item.ansatt}</p>
-              <p><strong>Oppgave:</strong> {item.oppgave}</p>
-              <p><strong>Kommentar:</strong> {item.kommentar || "Ingen kommentar"}</p>
+        <div className="flex w-full flex-col items-center gap-6">
+          <button
+            onClick={() => router.push("/logg/apning")}
+            className="h-20 w-[90%] rounded-2xl bg-white text-xl font-semibold text-black shadow-lg active:scale-95 transition"
+          >
+            Åpning
+          </button>
 
-              {item.bilde && (
-                <img
-                  src={item.bilde}
-                  alt="Registrert bilde"
-                  className="mt-3 max-h-48 rounded-xl"
-                />
-              )}
+          <button
+            onClick={() => router.push("/logg/andre")}
+            className="h-20 w-[90%] rounded-2xl bg-white text-xl font-semibold text-black shadow-lg active:scale-95 transition"
+          >
+            Andre oppgaver
+          </button>
 
-              <p className="mt-2"><strong>Tid:</strong> {item.tidspunkt}</p>
-            </div>
-          ))
-        )}
+          <button
+            onClick={() => router.push("/logg/stenging")}
+            className="h-20 w-[90%] rounded-2xl bg-white text-xl font-semibold text-black shadow-lg active:scale-95 transition"
+          >
+            Stenging
+          </button>
+
+          <button
+            onClick={() => router.push("/logg/temperatur")}
+            className="h-20 w-[90%] rounded-2xl bg-white text-xl font-semibold text-black shadow-lg active:scale-95 transition"
+          >
+            Temperatur
+          </button>
+
+          <button
+            onClick={() => router.push("/logg/fiks")}
+            className="h-20 w-[90%] rounded-2xl bg-yellow-400 text-xl font-semibold text-black shadow-lg active:scale-95 transition"
+          >
+            Dette må fikses
+          </button>
+
+          <button
+            onClick={() => router.push("/")}
+            className="mt-8 w-[70%] rounded-xl border border-zinc-600 px-5 py-3 text-sm text-zinc-300 active:scale-95 transition"
+          >
+            Tilbake
+          </button>
+        </div>
       </div>
     </main>
   )

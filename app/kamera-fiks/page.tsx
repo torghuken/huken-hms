@@ -3,17 +3,15 @@
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 
-export default function KameraPage() {
+export default function KameraFiksPage() {
   const router = useRouter()
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
 
   const [ansatt, setAnsatt] = useState("")
-  const [oppgave, setOppgave] = useState("")
-  const [oppgaveBilde, setOppgaveBilde] = useState<string | null>(null)
+  const [kategori, setKategori] = useState("")
   const [employeeId, setEmployeeId] = useState<string | null>(null)
-  const [taskId, setTaskId] = useState<string | null>(null)
 
   const [imageBlob, setImageBlob] = useState<Blob | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
@@ -25,10 +23,8 @@ export default function KameraPage() {
 
   useEffect(() => {
     setAnsatt(localStorage.getItem("selectedEmployeeName") || "")
-    setOppgave(localStorage.getItem("selectedTaskName") || "")
-    setOppgaveBilde(localStorage.getItem("selectedTaskImageUrl"))
+    setKategori(localStorage.getItem("selectedFixCategoryName") || "")
     setEmployeeId(localStorage.getItem("selectedEmployeeId"))
-    setTaskId(localStorage.getItem("selectedTaskId"))
 
     startCamera()
 
@@ -138,14 +134,14 @@ export default function KameraPage() {
       return
     }
 
-    if (!employeeId || !taskId) {
-      setStatus("Mangler navn eller oppgave")
+    if (!employeeId) {
+      setStatus("Mangler bruker")
       return
     }
 
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    const filename = `${Date.now()}.jpg`
+    const filename = `${Date.now()}-fix.jpg`
 
     try {
       setStatus("Laster opp bilde...")
@@ -181,8 +177,7 @@ export default function KameraPage() {
         },
         body: JSON.stringify({
           employee_id: employeeId,
-          task_id: taskId,
-          comment: kommentar || null,
+          comment: `${kategori}${kommentar ? `: ${kommentar}` : ""}`,
           image_url: imageUrl,
         }),
       })
@@ -193,12 +188,10 @@ export default function KameraPage() {
         return
       }
 
-      localStorage.removeItem("selectedTaskId")
-      localStorage.removeItem("selectedTaskName")
-      localStorage.removeItem("selectedTaskImageUrl")
-      localStorage.removeItem("selectedTaskRequiresPhoto")
+      localStorage.removeItem("selectedFixCategoryId")
+      localStorage.removeItem("selectedFixCategoryName")
 
-      router.replace("/oppgave")
+      router.replace("/")
     } catch (err) {
       setStatus(`Feil: ${String(err)}`)
     }
@@ -236,21 +229,14 @@ export default function KameraPage() {
 
       <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/70 to-transparent p-5">
         <p className="text-sm opacity-80">Ansatt: {ansatt}</p>
-        <p className="text-2xl font-semibold">{oppgave}</p>
-
-        {oppgaveBilde && !preview && (
-          <img
-            src={oppgaveBilde}
-            alt="Eksempel på oppgaven"
-            className="mt-3 max-h-32 rounded-xl border border-white/20"
-          />
-        )}
+        <p className="text-2xl font-semibold">Dette må fikses</p>
+        <p className="text-sm opacity-90">{kategori}</p>
       </div>
 
       {preview && (
         <div className="absolute inset-x-0 bottom-28 px-4">
           <textarea
-            placeholder="Vil du skrive noe?"
+            placeholder="Hva må fikses?"
             value={kommentar}
             onChange={(e) => setKommentar(e.target.value)}
             className="w-full rounded-2xl bg-black/60 p-4 text-white outline-none backdrop-blur"
