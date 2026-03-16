@@ -2,16 +2,20 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import LanguageSwitcher from "@/app/components/LanguageSwitcher"
+import { translations } from "@/lib/translations"
 
 export default function HomePage() {
   const router = useRouter()
   const [navn, setNavn] = useState("")
   const [rolle, setRolle] = useState("staff")
+  const [lang, setLang] = useState<"no" | "en" | "es">("no")
 
   useEffect(() => {
     const employeeId = localStorage.getItem("selectedEmployeeId")
     const employeeName = localStorage.getItem("selectedEmployeeName")
     const employeeRole = localStorage.getItem("selectedEmployeeRole")
+    const savedLang = localStorage.getItem("lang") as "no" | "en" | "es" | null
 
     if (!employeeId) {
       router.replace("/ansatt")
@@ -20,7 +24,10 @@ export default function HomePage() {
 
     setNavn(employeeName || "")
     setRolle(employeeRole || "staff")
+    setLang(savedLang || "no")
   }, [router])
+
+  const t = translations[lang]
 
   function byttBruker() {
     localStorage.removeItem("selectedEmployeeId")
@@ -34,12 +41,16 @@ export default function HomePage() {
     localStorage.removeItem("selectedTaskRequiresPhoto")
     localStorage.removeItem("selectedFixCategoryId")
     localStorage.removeItem("selectedFixCategoryName")
+    localStorage.removeItem("selectedTemperatureUnitId")
+    localStorage.removeItem("selectedTemperatureUnitName")
     router.replace("/ansatt")
   }
 
   return (
     <main className="min-h-screen bg-black px-6 pt-16 text-white">
       <div className="mx-auto flex max-w-md flex-col items-center">
+        <LanguageSwitcher />
+
         <h1 className="mb-12 text-2xl font-semibold">{navn}</h1>
 
         <div className="flex w-full flex-col items-center gap-6">
@@ -47,21 +58,21 @@ export default function HomePage() {
             onClick={() => router.push("/oppgavevalg")}
             className="h-20 w-[90%] rounded-2xl bg-white text-xl font-semibold text-black shadow-lg active:scale-95 transition"
           >
-            Oppgaver
+            {t.tasks}
           </button>
 
           <button
             onClick={() => router.push("/temperatur")}
             className="h-20 w-[85%] rounded-2xl bg-white text-xl font-semibold text-black shadow-lg active:scale-95 transition"
           >
-            Temperaturkontroll
+            {t.temperature}
           </button>
 
           <button
             onClick={() => router.push("/meld")}
             className="h-20 w-[80%] rounded-2xl bg-yellow-400 text-xl font-semibold text-black shadow-lg active:scale-95 transition"
           >
-            Dette må fikses
+            {t.fix}
           </button>
 
           {rolle === "leader" && (
@@ -70,21 +81,21 @@ export default function HomePage() {
                 onClick={() => router.push("/logg")}
                 className="h-20 w-[80%] rounded-2xl bg-zinc-700 text-xl font-semibold text-white shadow-lg active:scale-95 transition"
               >
-                Logg
+                {t.log}
               </button>
 
               <button
                 onClick={() => router.push("/admin-oppgaver")}
                 className="h-20 w-[80%] rounded-2xl bg-zinc-800 text-xl font-semibold text-white shadow-lg active:scale-95 transition"
               >
-                Administrer oppgaver
+                {t.manageTasks}
               </button>
 
               <button
                 onClick={() => router.push("/admin-temperatur")}
                 className="h-20 w-[80%] rounded-2xl bg-zinc-800 text-xl font-semibold text-white shadow-lg active:scale-95 transition"
               >
-                Administrer temperatur
+                {t.manageTemperature}
               </button>
             </>
           )}
@@ -93,7 +104,7 @@ export default function HomePage() {
             onClick={byttBruker}
             className="mt-8 rounded-xl border border-zinc-600 px-5 py-3 text-sm text-zinc-300 active:scale-95 transition"
           >
-            Bytt bruker
+            {t.switchUser}
           </button>
         </div>
       </div>

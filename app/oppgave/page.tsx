@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
+import { translations } from "@/lib/translations"
 
 type Task = {
   id: string
@@ -45,11 +46,15 @@ export default function OppgavePage() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [feil, setFeil] = useState("")
   const [listeNavn, setListeNavn] = useState("")
+  const [lang, setLang] = useState<"no" | "en" | "es">("no")
   const router = useRouter()
 
   const todayColumn = useMemo(() => getTodayColumn(), [])
 
   useEffect(() => {
+    const savedLang = localStorage.getItem("lang") as "no" | "en" | "es" | null
+    setLang(savedLang || "no")
+
     const selectedEmployeeId = localStorage.getItem("selectedEmployeeId")
     if (!selectedEmployeeId) {
       router.replace("/ansatt")
@@ -75,8 +80,10 @@ export default function OppgavePage() {
       try {
         let query = `${url}/rest/v1/tasks?select=id,name,active,image_url,requires_photo,show_monday,show_tuesday,show_wednesday,show_thursday,show_friday,show_saturday,show_sunday&list_id=eq.${selectedTaskListId}&active=eq.true&order=name`
 
-        // Bare Åpning og Stenging skal styres av dagens dag
-        if (selectedTaskListName === "Åpning" || selectedTaskListName === "Stenging") {
+        if (
+          selectedTaskListName === "Åpning" ||
+          selectedTaskListName === "Stenging"
+        ) {
           query += `&${todayColumn}=eq.true`
         }
 
@@ -102,6 +109,8 @@ export default function OppgavePage() {
 
     loadTasks()
   }, [router, todayColumn])
+
+  const t = translations[lang]
 
   function velgOppgave(task: Task) {
     localStorage.setItem("selectedTaskId", task.id)
@@ -134,16 +143,16 @@ export default function OppgavePage() {
 
   return (
     <main style={{ padding: 40 }}>
-      <h1>Velg oppgave</h1>
+      <h1>{t.selectTask}</h1>
 
-      {listeNavn && <p>Liste: {listeNavn}</p>}
+      {listeNavn && <p>{t.list}: {listeNavn}</p>}
       {feil && <p style={{ color: "red" }}>{feil}</p>}
 
       {tasks.length === 0 && !feil && (
         <p>
           {listeNavn === "Åpning" || listeNavn === "Stenging"
-            ? "Ingen oppgaver for i dag"
-            : "Ingen oppgaver funnet"}
+            ? t.noTasksToday
+            : t.noTasksFound}
         </p>
       )}
 
@@ -162,6 +171,7 @@ export default function OppgavePage() {
             minWidth: "280px",
             textAlign: "left",
             background: "white",
+            color: "#000",
           }}
         >
           {task.name}
@@ -178,9 +188,10 @@ export default function OppgavePage() {
           border: "1px solid #ccc",
           cursor: "pointer",
           background: "white",
+          color: "#000",
         }}
       >
-        Tilbake
+        {t.back}
       </button>
     </main>
   )
