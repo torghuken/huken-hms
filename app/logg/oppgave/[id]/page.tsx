@@ -28,8 +28,14 @@ export default function OppgaveHistorikkPage() {
   const [feil, setFeil] = useState("")
 
   useEffect(() => {
+    const selectedVenue = localStorage.getItem("selectedVenue")
     const employeeId = localStorage.getItem("selectedEmployeeId")
     const employeeRole = localStorage.getItem("selectedEmployeeRole")
+
+    if (!selectedVenue) {
+      router.replace("/velg-sted")
+      return
+    }
 
     if (!employeeId) {
       router.replace("/ansatt")
@@ -43,16 +49,18 @@ export default function OppgaveHistorikkPage() {
 
     if (!taskId) return
 
-    loadPage()
+    loadPage(selectedVenue)
   }, [router, taskId])
 
-  async function loadPage() {
+  async function loadPage(selectedVenue: string) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
     try {
+      setFeil("")
+
       const taskRes = await fetch(
-        `${url}/rest/v1/tasks?select=id,name&id=eq.${taskId}`,
+        `${url}/rest/v1/tasks?select=id,name,list_id,task_lists!inner(id,name,venue_id)&id=eq.${taskId}&task_lists.venue_id=eq.${selectedVenue}`,
         {
           headers: {
             apikey: key,
@@ -64,11 +72,14 @@ export default function OppgaveHistorikkPage() {
       const taskData = await taskRes.json()
 
       if (!taskRes.ok || !taskData.length) {
-        setFeil("Fant ikke oppgaven")
+        setFeil("Fant ikke oppgaven for valgt sted")
         return
       }
 
-      setTask(taskData[0])
+      setTask({
+        id: taskData[0].id,
+        name: taskData[0].name,
+      })
 
       const logRes = await fetch(
         `${url}/rest/v1/logs?select=id,comment,image_url,created_at,employees(name)&task_id=eq.${taskId}&order=created_at.desc`,

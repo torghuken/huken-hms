@@ -7,6 +7,7 @@ type TemperatureUnit = {
   id: string
   name: string
   active: boolean
+  venue_id?: string | null
 }
 
 export default function TemperaturPage() {
@@ -15,23 +16,31 @@ export default function TemperaturPage() {
   const [feil, setFeil] = useState("")
 
   useEffect(() => {
+    const selectedVenue = localStorage.getItem("selectedVenue")
     const employeeId = localStorage.getItem("selectedEmployeeId")
+
+    if (!selectedVenue) {
+      router.replace("/velg-sted")
+      return
+    }
 
     if (!employeeId) {
       router.replace("/ansatt")
       return
     }
 
-    loadUnits()
+    loadUnits(selectedVenue)
   }, [router])
 
-  async function loadUnits() {
+  async function loadUnits(selectedVenue: string) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
     try {
+      setFeil("")
+
       const res = await fetch(
-        `${url}/rest/v1/temperature_units?select=id,name,active&active=eq.true&order=sort_order.asc,name.asc`,
+        `${url}/rest/v1/temperature_units?select=id,name,active,venue_id&venue_id=eq.${selectedVenue}&active=eq.true&order=sort_order.asc,name.asc`,
         {
           headers: {
             apikey: key,
@@ -70,7 +79,7 @@ export default function TemperaturPage() {
           <button
             key={unit.id}
             onClick={() => velgEnhet(unit)}
-            className="rounded-2xl bg-white px-6 py-6 text-left text-xl font-semibold text-black shadow-lg active:scale-95 transition"
+            className="rounded-2xl bg-white px-6 py-6 text-left text-xl font-semibold text-black shadow-lg transition active:scale-95"
           >
             {unit.name}
           </button>

@@ -78,7 +78,14 @@ export default function OppgavePage() {
       const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
       try {
-        let query = `${url}/rest/v1/tasks?select=id,name,active,image_url,requires_photo,show_monday,show_tuesday,show_wednesday,show_thursday,show_friday,show_saturday,show_sunday&list_id=eq.${selectedTaskListId}&active=eq.true&order=name`
+        setFeil("")
+
+        let query =
+          `${url}/rest/v1/tasks?` +
+          `select=id,name,active,image_url,requires_photo,show_monday,show_tuesday,show_wednesday,show_thursday,show_friday,show_saturday,show_sunday` +
+          `&list_id=eq.${selectedTaskListId}` +
+          `&active=eq.true` +
+          `&order=name`
 
         if (
           selectedTaskListName === "Åpning" ||
@@ -145,7 +152,12 @@ export default function OppgavePage() {
     <main style={{ padding: 40 }}>
       <h1>{t.selectTask}</h1>
 
-      {listeNavn && <p>{t.list}: {listeNavn}</p>}
+      {listeNavn && (
+        <p>
+          {t.list}: {listeNavn}
+        </p>
+      )}
+
       {feil && <p style={{ color: "red" }}>{feil}</p>}
 
       {tasks.length === 0 && !feil && (

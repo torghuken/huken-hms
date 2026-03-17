@@ -20,6 +20,7 @@ type Task = {
   task_lists: {
     id: string
     name: string
+    venue_id?: string | null
   } | null
 }
 
@@ -61,10 +62,18 @@ export default function AdminOppgaverPage() {
   const [days, setDays] = useState<DaysState>(defaultDays)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [lasterId, setLasterId] = useState<string | null>(null)
+  const [sletterId, setSletterId] = useState<string | null>(null)
 
   useEffect(() => {
     const employeeId = localStorage.getItem("selectedEmployeeId")
     const employeeRole = localStorage.getItem("selectedEmployeeRole")
+    const selectedVenue = localStorage.getItem("selectedVenue")
+
+    if (!selectedVenue) {
+      router.replace("/velg-sted")
+      return
+    }
 
     if (!employeeId) {
       router.replace("/ansatt")
@@ -76,8 +85,8 @@ export default function AdminOppgaverPage() {
       return
     }
 
-    loadTaskLists()
-    loadTasks()
+    loadTaskLists(selectedVenue)
+    loadTasks(selectedVenue)
   }, [router])
 
   useEffect(() => {
@@ -90,13 +99,15 @@ export default function AdminOppgaverPage() {
     return Object.values(days).every(Boolean)
   }, [days])
 
-  async function loadTaskLists() {
+  async function loadTaskLists(selectedVenue: string) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
     try {
+      setFeil("")
+
       const res = await fetch(
-        `${url}/rest/v1/task_lists?select=id,name&order=name`,
+        `${url}/rest/v1/task_lists?select=id,name&venue_id=eq.${selectedVenue}&order=name`,
         {
           headers: {
             apikey: key,
@@ -115,7 +126,10 @@ export default function AdminOppgaverPage() {
       setTaskLists(data)
 
       if (data.length > 0 && !valgtListeId) {
-        const andre = data.find((item: TaskList) => item.name === "Andre oppgaver")
+        const andre = data.find(
+          (item: TaskList) =>
+            item.name === "Andre oppgaver" || item.name === "Daglige oppgaver"
+        )
         setValgtListeId(andre ? andre.id : data[0].id)
       }
     } catch (err) {
@@ -123,13 +137,15 @@ export default function AdminOppgaverPage() {
     }
   }
 
-  async function loadTasks() {
+  async function loadTasks(selectedVenue: string) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
     try {
+      setFeil("")
+
       const res = await fetch(
-        `${url}/rest/v1/tasks?select=id,name,active,list_id,image_url,requires_photo,show_monday,show_tuesday,show_wednesday,show_thursday,show_friday,show_saturday,show_sunday,task_lists(id,name)&order=name`,
+        `${url}/rest/v1/tasks?select=id,name,active,list_id,image_url,requires_photo,show_monday,show_tuesday,show_wednesday,show_thursday,show_friday,show_saturday,show_sunday,task_lists!inner(id,name,venue_id)&task_lists.venue_id=eq.${selectedVenue}&order=name`,
         {
           headers: {
             apikey: key,
@@ -154,8 +170,13 @@ export default function AdminOppgaverPage() {
   async function toggleActive(task: Task) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    const selectedVenue = localStorage.getItem("selectedVenue")
 
     try {
+      setFeil("")
+      setStatus("")
+      setLasterId(task.id)
+
       const res = await fetch(`${url}/rest/v1/tasks?id=eq.${task.id}`, {
         method: "PATCH",
         headers: {
@@ -174,9 +195,70 @@ export default function AdminOppgaverPage() {
         return
       }
 
-      loadTasks()
+      setTasks((prev) =>
+        prev.map((item) =>
+          item.id === task.id ? { ...item, active: !item.active } : item
+        )
+      )
+
+      setStatus(
+        task.active
+          ? `Oppgaven "${task.name}" er slått av`
+          : `Oppgaven "${task.name}" er slått på`
+      )
     } catch (err) {
       setFeil(`Fetch-feil: ${String(err)}`)
+    } finally {
+      setLasterId(null)
+      if (selectedVenue) {
+        loadTasks(selectedVenue)
+      }
+    }
+  }
+
+  async function deleteTask(task: Task) {
+    const confirmed = window.confirm(
+      `Er du sikker på at du vil fjerne oppgaven "${task.name}"? Den blir satt som inaktiv.`
+    )
+
+    if (!confirmed) return
+
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    const selectedVenue = localStorage.getItem("selectedVenue")
+
+    try {
+      setFeil("")
+      setStatus("")
+      setSletterId(task.id)
+
+      const res = await fetch(`${url}/rest/v1/tasks?id=eq.${task.id}`, {
+        method: "PATCH",
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          active: false,
+        }),
+      })
+
+      if (!res.ok) {
+        const data = await res.text()
+        setFeil(data || "Kunne ikke fjerne oppgave")
+        return
+      }
+
+      setTasks((prev) => prev.filter((item) => item.id !== task.id))
+      setStatus(`Oppgaven "${task.name}" er fjernet`)
+    } catch (err) {
+      setFeil(`Fetch-feil: ${String(err)}`)
+    } finally {
+      setSletterId(null)
+      if (selectedVenue) {
+        loadTasks(selectedVenue)
+      }
     }
   }
 
@@ -239,6 +321,13 @@ export default function AdminOppgaverPage() {
   }
 
   async function leggTilOppgave() {
+    const selectedVenue = localStorage.getItem("selectedVenue")
+
+    if (!selectedVenue) {
+      setFeil("Fant ikke valgt sted")
+      return
+    }
+
     if (!nyOppgave.trim()) {
       setFeil("Skriv navn på oppgaven")
       return
@@ -306,7 +395,9 @@ export default function AdminOppgaverPage() {
       if (previewUrl) URL.revokeObjectURL(previewUrl)
       setPreviewUrl(null)
       setStatus("Oppgaven er lagret")
-      loadTasks()
+
+      loadTasks(selectedVenue)
+      loadTaskLists(selectedVenue)
     } catch (err) {
       setFeil(`Feil: ${String(err)}`)
       setStatus("")
@@ -327,12 +418,20 @@ export default function AdminOppgaverPage() {
     return activeDays.join(" • ")
   }
 
-  const dagligeOppgaver = tasks.filter(
+  const aktiveTasks = tasks.filter((task) => task.active)
+
+  const dagligeOppgaver = aktiveTasks.filter(
     (task) => task.task_lists?.name === "Daglige oppgaver"
   )
 
-  const andreOppgaver = tasks.filter(
+  const andreOppgaver = aktiveTasks.filter(
     (task) => task.task_lists?.name === "Andre oppgaver"
+  )
+
+  const andreListerOppgaver = aktiveTasks.filter(
+    (task) =>
+      task.task_lists?.name !== "Daglige oppgaver" &&
+      task.task_lists?.name !== "Andre oppgaver"
   )
 
   return (
@@ -372,6 +471,7 @@ export default function AdminOppgaverPage() {
 
               <div className="flex gap-2">
                 <button
+                  type="button"
                   onClick={() => setRequiresPhoto(true)}
                   className={`flex-1 rounded-lg px-3 py-3 text-sm font-semibold ${
                     requiresPhoto ? "bg-white text-black" : "bg-zinc-700 text-white"
@@ -381,6 +481,7 @@ export default function AdminOppgaverPage() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => setRequiresPhoto(false)}
                   className={`flex-1 rounded-lg px-3 py-3 text-sm font-semibold ${
                     !requiresPhoto ? "bg-white text-black" : "bg-zinc-700 text-white"
@@ -396,6 +497,7 @@ export default function AdminOppgaverPage() {
 
               <div className="mb-3 flex flex-wrap gap-2">
                 <button
+                  type="button"
                   onClick={() => setAlleDager(true)}
                   className={`rounded-lg px-3 py-2 text-sm font-semibold ${
                     alleDagerValgt ? "bg-white text-black" : "bg-zinc-700 text-white"
@@ -405,6 +507,7 @@ export default function AdminOppgaverPage() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => setAlleDager(false)}
                   className="rounded-lg bg-zinc-700 px-3 py-2 text-sm font-semibold text-white"
                 >
@@ -428,6 +531,7 @@ export default function AdminOppgaverPage() {
                   return (
                     <button
                       key={key}
+                      type="button"
                       onClick={() => toggleDay(dayKey)}
                       className={`rounded-lg px-3 py-2 text-sm font-semibold ${
                         active ? "bg-green-500 text-white" : "bg-zinc-700 text-white"
@@ -460,6 +564,7 @@ export default function AdminOppgaverPage() {
             </div>
 
             <button
+              type="button"
               onClick={leggTilOppgave}
               className="w-full rounded-xl bg-white px-4 py-3 text-lg font-semibold text-black"
             >
@@ -472,24 +577,40 @@ export default function AdminOppgaverPage() {
           <h2 className="mb-3 text-xl font-semibold">Daglige oppgaver</h2>
 
           <div className="space-y-3">
-            {dagligeOppgaver.map((task) => (
-              <div
-                key={task.id}
-                className="rounded-xl bg-white p-4 text-black"
-              >
-                <div className="flex items-center justify-between gap-4">
-                  <span>{task.name}</span>
+            {dagligeOppgaver.length === 0 && (
+              <div className="rounded-xl bg-zinc-900 p-4 text-zinc-300">
+                Ingen daglige oppgaver enda
+              </div>
+            )}
 
-                  <button
-                    onClick={() => toggleActive(task)}
-                    className={`rounded-lg px-3 py-2 text-sm font-semibold ${
-                      task.active
-                        ? "bg-green-500 text-white"
-                        : "bg-zinc-400 text-white"
-                    }`}
-                  >
-                    {task.active ? "På" : "Av"}
-                  </button>
+            {dagligeOppgaver.map((task) => (
+              <div key={task.id} className="rounded-xl bg-white p-4 text-black">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="font-medium">{task.name}</span>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleActive(task)}
+                      disabled={lasterId === task.id || sletterId === task.id}
+                      className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                        task.active
+                          ? "bg-green-500 text-white"
+                          : "bg-zinc-400 text-white"
+                      }`}
+                    >
+                      {lasterId === task.id ? "Lagrer..." : task.active ? "På" : "Av"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => deleteTask(task)}
+                      disabled={lasterId === task.id || sletterId === task.id}
+                      className="rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white"
+                    >
+                      {sletterId === task.id ? "Fjerner..." : "Slett"}
+                    </button>
+                  </div>
                 </div>
 
                 <p className="mt-2 text-sm text-zinc-600">{formatDays(task)}</p>
@@ -513,24 +634,40 @@ export default function AdminOppgaverPage() {
           <h2 className="mb-3 text-xl font-semibold">Andre oppgaver</h2>
 
           <div className="space-y-3">
-            {andreOppgaver.map((task) => (
-              <div
-                key={task.id}
-                className="rounded-xl bg-white p-4 text-black"
-              >
-                <div className="flex items-center justify-between gap-4">
-                  <span>{task.name}</span>
+            {andreOppgaver.length === 0 && (
+              <div className="rounded-xl bg-zinc-900 p-4 text-zinc-300">
+                Ingen andre oppgaver enda
+              </div>
+            )}
 
-                  <button
-                    onClick={() => toggleActive(task)}
-                    className={`rounded-lg px-3 py-2 text-sm font-semibold ${
-                      task.active
-                        ? "bg-green-500 text-white"
-                        : "bg-zinc-400 text-white"
-                    }`}
-                  >
-                    {task.active ? "På" : "Av"}
-                  </button>
+            {andreOppgaver.map((task) => (
+              <div key={task.id} className="rounded-xl bg-white p-4 text-black">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="font-medium">{task.name}</span>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleActive(task)}
+                      disabled={lasterId === task.id || sletterId === task.id}
+                      className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                        task.active
+                          ? "bg-green-500 text-white"
+                          : "bg-zinc-400 text-white"
+                      }`}
+                    >
+                      {lasterId === task.id ? "Lagrer..." : task.active ? "På" : "Av"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => deleteTask(task)}
+                      disabled={lasterId === task.id || sletterId === task.id}
+                      className="rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white"
+                    >
+                      {sletterId === task.id ? "Fjerner..." : "Slett"}
+                    </button>
+                  </div>
                 </div>
 
                 <p className="mt-2 text-sm text-zinc-600">{formatDays(task)}</p>
@@ -550,7 +687,66 @@ export default function AdminOppgaverPage() {
           </div>
         </div>
 
+        {andreListerOppgaver.length > 0 && (
+          <div>
+            <h2 className="mb-3 text-xl font-semibold">Flere oppgaver</h2>
+
+            <div className="space-y-3">
+              {andreListerOppgaver.map((task) => (
+                <div key={task.id} className="rounded-xl bg-white p-4 text-black">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="font-medium">{task.name}</p>
+                      <p className="text-sm text-zinc-500">
+                        {task.task_lists?.name || "Uten kategori"}
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => toggleActive(task)}
+                        disabled={lasterId === task.id || sletterId === task.id}
+                        className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                          task.active
+                            ? "bg-green-500 text-white"
+                            : "bg-zinc-400 text-white"
+                        }`}
+                      >
+                        {lasterId === task.id ? "Lagrer..." : task.active ? "På" : "Av"}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => deleteTask(task)}
+                        disabled={lasterId === task.id || sletterId === task.id}
+                        className="rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white"
+                      >
+                        {sletterId === task.id ? "Fjerner..." : "Slett"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <p className="mt-2 text-sm text-zinc-600">{formatDays(task)}</p>
+                  <p className="mt-1 text-sm text-zinc-600">
+                    {task.requires_photo ? "Må ta bilde" : "Må bekreftes"}
+                  </p>
+
+                  {task.image_url && (
+                    <img
+                      src={task.image_url}
+                      alt="Oppgavebilde"
+                      className="mt-3 max-h-40 rounded-xl"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <button
+          type="button"
           onClick={() => router.push("/")}
           className="w-full rounded-xl border border-zinc-600 px-4 py-3 text-zinc-200"
         >

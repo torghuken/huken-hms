@@ -7,6 +7,7 @@ type Employee = {
   id: string
   name: string
   role: string | null
+  venue_id: string | null
 }
 
 export default function AnsattPage() {
@@ -16,12 +17,19 @@ export default function AnsattPage() {
 
   useEffect(() => {
     async function loadEmployees() {
+      const selectedVenue = localStorage.getItem("selectedVenue")
+
+      if (!selectedVenue) {
+        router.replace("/velg-sted")
+        return
+      }
+
       const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
       const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
       try {
         const res = await fetch(
-          `${url}/rest/v1/employees?select=id,name,role`,
+          `${url}/rest/v1/employees?select=id,name,role,venue_id&venue_id=eq.${selectedVenue}`,
           {
             headers: {
               apikey: key,
@@ -44,12 +52,13 @@ export default function AnsattPage() {
     }
 
     loadEmployees()
-  }, [])
+  }, [router])
 
   function velgAnsatt(emp: Employee) {
     localStorage.setItem("selectedEmployeeId", emp.id)
     localStorage.setItem("selectedEmployeeName", emp.name)
     localStorage.setItem("selectedEmployeeRole", emp.role || "staff")
+
     router.replace("/")
   }
 

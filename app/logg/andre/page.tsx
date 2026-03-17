@@ -33,8 +33,14 @@ export default function AndreLoggPage() {
   }, [])
 
   useEffect(() => {
+    const selectedVenue = localStorage.getItem("selectedVenue")
     const employeeId = localStorage.getItem("selectedEmployeeId")
     const employeeRole = localStorage.getItem("selectedEmployeeRole")
+
+    if (!selectedVenue) {
+      router.replace("/velg-sted")
+      return
+    }
 
     if (!employeeId) {
       router.replace("/ansatt")
@@ -46,16 +52,18 @@ export default function AndreLoggPage() {
       return
     }
 
-    loadPage()
+    loadPage(selectedVenue)
   }, [router])
 
-  async function loadPage() {
+  async function loadPage(selectedVenue: string) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
     try {
+      setFeil("")
+
       const listRes = await fetch(
-        `${url}/rest/v1/task_lists?select=id,name&name=eq.Andre oppgaver`,
+        `${url}/rest/v1/task_lists?select=id,name,venue_id&name=eq.Andre oppgaver&venue_id=eq.${selectedVenue}`,
         {
           headers: {
             apikey: key,
@@ -67,14 +75,14 @@ export default function AndreLoggPage() {
       const listData = await listRes.json()
 
       if (!listRes.ok || !listData.length) {
-        setFeil("Fant ikke oppgavetypen Andre oppgaver")
+        setFeil("Fant ikke oppgavetypen Andre oppgaver for valgt sted")
         return
       }
 
       const listId = listData[0].id
 
       const taskRes = await fetch(
-        `${url}/rest/v1/tasks?select=id,name&list_id=eq.${listId}`,
+        `${url}/rest/v1/tasks?select=id,name,list_id,task_lists!inner(id,name,venue_id)&list_id=eq.${listId}&task_lists.venue_id=eq.${selectedVenue}`,
         {
           headers: {
             apikey: key,

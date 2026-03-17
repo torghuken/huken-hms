@@ -9,6 +9,7 @@ type TemperatureLogItem = {
   created_at: string
   employees: {
     name: string
+    venue_id?: string | null
   } | null
   temperature_units: {
     name: string
@@ -31,8 +32,14 @@ export default function TemperaturLoggPage() {
   }, [])
 
   useEffect(() => {
+    const selectedVenue = localStorage.getItem("selectedVenue")
     const employeeId = localStorage.getItem("selectedEmployeeId")
     const employeeRole = localStorage.getItem("selectedEmployeeRole")
+
+    if (!selectedVenue) {
+      router.replace("/velg-sted")
+      return
+    }
 
     if (!employeeId) {
       router.replace("/ansatt")
@@ -44,16 +51,18 @@ export default function TemperaturLoggPage() {
       return
     }
 
-    loadPage()
+    loadPage(selectedVenue)
   }, [router])
 
-  async function loadPage() {
+  async function loadPage(selectedVenue: string) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
     try {
+      setFeil("")
+
       const res = await fetch(
-        `${url}/rest/v1/temperature_logs?select=id,temperature_value,created_at,employees(name),temperature_units(name)&order=created_at.desc`,
+        `${url}/rest/v1/temperature_logs?select=id,temperature_value,created_at,employees!inner(name,venue_id),temperature_units(name)&employees.venue_id=eq.${selectedVenue}&order=created_at.desc`,
         {
           headers: {
             apikey: key,

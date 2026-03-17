@@ -12,6 +12,7 @@ type FixLogItem = {
   fixed_at: string | null
   employees: {
     name: string
+    venue_id?: string | null
   } | null
 }
 
@@ -32,8 +33,14 @@ export default function FiksLoggPage() {
   }, [])
 
   useEffect(() => {
+    const selectedVenue = localStorage.getItem("selectedVenue")
     const employeeId = localStorage.getItem("selectedEmployeeId")
     const employeeRole = localStorage.getItem("selectedEmployeeRole")
+
+    if (!selectedVenue) {
+      router.replace("/velg-sted")
+      return
+    }
 
     if (!employeeId) {
       router.replace("/ansatt")
@@ -45,16 +52,19 @@ export default function FiksLoggPage() {
       return
     }
 
-    loadPage()
+    loadPage(selectedVenue)
   }, [router])
 
-  async function loadPage() {
+  async function loadPage(selectedVenue: string) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
     try {
+      setFeil("")
+      setStatus("")
+
       const res = await fetch(
-        `${url}/rest/v1/logs?select=id,comment,image_url,created_at,status,fixed_at,employees(name)&task_id=is.null&order=created_at.desc`,
+        `${url}/rest/v1/logs?select=id,comment,image_url,created_at,status,fixed_at,employees!inner(name,venue_id)&task_id=is.null&employees.venue_id=eq.${selectedVenue}&order=created_at.desc`,
         {
           headers: {
             apikey: key,
@@ -79,6 +89,7 @@ export default function FiksLoggPage() {
   async function markerFullført(id: string) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    const selectedVenue = localStorage.getItem("selectedVenue")
 
     try {
       setFeil("")
@@ -105,7 +116,10 @@ export default function FiksLoggPage() {
       }
 
       setStatus("Oppgaven er flyttet til Fullførte")
-      loadPage()
+
+      if (selectedVenue) {
+        loadPage(selectedVenue)
+      }
     } catch (err) {
       setFeil(`Fetch-feil: ${String(err)}`)
       setStatus("")
