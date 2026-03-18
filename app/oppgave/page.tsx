@@ -6,6 +6,7 @@ import { translations } from "@/lib/translations"
 import {
   DndContext,
   PointerSensor,
+  TouchSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -104,7 +105,15 @@ export default function OppgavePage() {
   const router = useRouter()
 
   const todayColumn = useMemo(() => getTodayColumn(), [])
-  const sensors = useSensors(useSensor(PointerSensor))
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 150,
+        tolerance: 5,
+      },
+    })
+  )
   const t = translations[lang]
 
   useEffect(() => {
@@ -323,7 +332,14 @@ export default function OppgavePage() {
             items={tasks.map((task) => task.id)}
             strategy={verticalListSortingStrategy}
           >
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 12 }}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+                marginTop: 12,
+              }}
+            >
               {tasks.map((task) => (
                 <SortableTaskCard key={task.id} task={task}>
                   <div

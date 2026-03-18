@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import {
   DndContext,
   PointerSensor,
+  TouchSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -69,7 +70,15 @@ export default function TemperaturPage() {
   const [selectedVenue, setSelectedVenue] = useState("")
   const [flytterId, setFlytterId] = useState<string | null>(null)
 
-  const sensors = useSensors(useSensor(PointerSensor))
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 150,
+        tolerance: 5,
+      },
+    })
+  )
 
   useEffect(() => {
     const venue = localStorage.getItem("selectedVenue")
