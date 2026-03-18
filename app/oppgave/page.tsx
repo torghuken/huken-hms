@@ -36,6 +36,11 @@ type Task = {
   show_sunday: boolean
 }
 
+type RecentLog = {
+  task_id: string | null
+  created_at: string
+}
+
 function getTodayColumn() {
   const day = new Date().getDay()
 
@@ -57,6 +62,10 @@ function getTodayColumn() {
     default:
       return "show_monday"
   }
+}
+
+function getSixHoursAgoIso() {
+  return new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
 }
 
 function SortableTaskCard({
@@ -185,6 +194,7 @@ export default function OppgavePage() {
   const [lang, setLang] = useState<"no" | "en" | "es">("no")
   const [isLeader, setIsLeader] = useState(false)
   const [selectedTaskListId, setSelectedTaskListId] = useState("")
+  const [hideFor6Hours, setHideFor6Hours] = useState(false)
   const [flytterId, setFlytterId] = useState<string | null>(null)
   const router = useRouter()
 
@@ -208,6 +218,8 @@ export default function OppgavePage() {
     const selectedEmployeeRole = localStorage.getItem("selectedEmployeeRole")
     const taskListId = localStorage.getItem("selectedTaskListId")
     const taskListName = localStorage.getItem("selectedTaskListName")
+    const taskListHideFor6Hours =
+      localStorage.getItem("selectedTaskListHideFor6Hours") === "true"
 
     if (!selectedEmployeeId) {
       router.replace("/ansatt")
@@ -226,10 +238,15 @@ export default function OppgavePage() {
     }
 
     setSelectedTaskListId(taskListId)
-    loadTasks(taskListId, taskListName || "")
+    setHideFor6Hours(taskListHideFor6Hours)
+    loadTasks(taskListId, taskListName || "", taskListHideFor6Hours)
   }, [router, todayColumn])
 
-  async function loadTasks(taskListId: string, taskListName: string) {
+  async function loadTasks(
+    taskListId: string,
+    taskListName: string,
+    hideListFor6Hours: boolean
+  ) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
@@ -261,7 +278,45 @@ export default function OppgavePage() {
         return
       }
 
-      setTasks(data)
+      const allTasks: Task[] = data
+
+      if (!hideListFor6Hours || allTasks.length === 0) {
+        setTasks(allTasks)
+        return
+      }
+
+      const taskIds = allTasks.map((task) => task.id)
+      const sixHoursAgoIso = getSixHoursAgoIso()
+
+      const logsQuery =
+        `${url}/rest/v1/logs?select=task_id,created_at` +
+        `&task_id=in.(${taskIds.join(",")})` +
+        `&created_at=gte.${encodeURIComponent(sixHoursAgoIso)}` +
+        `&order=created_at.desc`
+
+      const logsRes = await fetch(logsQuery, {
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+        },
+      })
+
+      const logsData = await logsRes.json()
+
+      if (!logsRes.ok) {
+        setFeil(logsData.message || "Kunne ikke hente nylige logger")
+        return
+      }
+
+      const recentLogs: RecentLog[] = logsData
+      const hiddenTaskIds = new Set(
+        recentLogs
+          .map((log) => log.task_id)
+          .filter((taskId): taskId is string => Boolean(taskId))
+      )
+
+      const visibleTasks = allTasks.filter((task) => !hiddenTaskIds.has(task.id))
+      setTasks(visibleTasks)
     } catch (err) {
       setFeil(`Fetch-feil: ${String(err)}`)
     }
@@ -374,7 +429,7 @@ export default function OppgavePage() {
     } catch (err) {
       setFeil(`Feil: ${String(err)}`)
       if (selectedTaskListId) {
-        loadTasks(selectedTaskListId, listeNavn)
+        loadTasks(selectedTaskListId, listeNavn, hideFor6Hours)
       }
     } finally {
       setFlytterId(null)
@@ -386,6 +441,7 @@ export default function OppgavePage() {
     localStorage.removeItem("selectedTaskName")
     localStorage.removeItem("selectedTaskImageUrl")
     localStorage.removeItem("selectedTaskRequiresPhoto")
+    localStorage.removeItem("selectedTaskListHideFor6Hours")
     router.push("/oppgavevalg")
   }
 

@@ -27,6 +27,7 @@ type Task = {
   list_id: string | null
   image_url: string | null
   requires_photo: boolean
+  hide_for_6_hours: boolean
   show_monday: boolean
   show_tuesday: boolean
   show_wednesday: boolean
@@ -70,12 +71,16 @@ function SortableTaskCard({
   task,
   flytterId,
   sletterId,
+  skjulerId,
   onDelete,
+  onToggleHideMode,
 }: {
   task: Task
   flytterId: string | null
   sletterId: string | null
+  skjulerId: string | null
   onDelete: (task: Task) => void
+  onToggleHideMode: (task: Task) => void
 }) {
   const {
     attributes,
@@ -117,7 +122,28 @@ function SortableTaskCard({
             </p>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation()
+                onToggleHideMode(task)
+              }}
+              disabled={
+                flytterId === task.id ||
+                sletterId === task.id ||
+                skjulerId === task.id
+              }
+              className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              {skjulerId === task.id
+                ? "Lagrer..."
+                : task.hide_for_6_hours
+                ? "Skjul 6t"
+                : "Vis alltid"}
+            </button>
+
             <button
               type="button"
               onPointerDown={(e) => e.stopPropagation()}
@@ -125,7 +151,11 @@ function SortableTaskCard({
                 e.stopPropagation()
                 onDelete(task)
               }}
-              disabled={flytterId === task.id || sletterId === task.id}
+              disabled={
+                flytterId === task.id ||
+                sletterId === task.id ||
+                skjulerId === task.id
+              }
               className="rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
             >
               {sletterId === task.id ? "Fjerner..." : "Slett"}
@@ -148,6 +178,11 @@ function SortableTaskCard({
         <p className="mt-2 text-sm text-zinc-600">{formatDays(task)}</p>
         <p className="mt-1 text-sm text-zinc-600">
           {task.requires_photo ? "Må ta bilde" : "Må bekreftes"}
+        </p>
+        <p className="mt-1 text-sm text-zinc-600">
+          {task.hide_for_6_hours
+            ? "Skjules i 6 timer etter utføring"
+            : "Vises hele tiden"}
         </p>
 
         {task.image_url && (
@@ -177,6 +212,7 @@ export default function AdminOppgaverPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [sletterId, setSletterId] = useState<string | null>(null)
   const [flytterId, setFlytterId] = useState<string | null>(null)
+  const [skjulerId, setSkjulerId] = useState<string | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -268,7 +304,7 @@ export default function AdminOppgaverPage() {
       setFeil("")
 
       const res = await fetch(
-        `${url}/rest/v1/tasks?select=id,name,active,sort_order,list_id,image_url,requires_photo,show_monday,show_tuesday,show_wednesday,show_thursday,show_friday,show_saturday,show_sunday,task_lists!inner(id,name,venue_id)&task_lists.venue_id=eq.${selectedVenue}&order=list_id.asc,sort_order.asc,name.asc`,
+        `${url}/rest/v1/tasks?select=id,name,active,sort_order,list_id,image_url,requires_photo,hide_for_6_hours,show_monday,show_tuesday,show_wednesday,show_thursday,show_friday,show_saturday,show_sunday,task_lists!inner(id,name,venue_id)&task_lists.venue_id=eq.${selectedVenue}&order=list_id.asc,sort_order.asc,name.asc`,
         {
           headers: {
             apikey: key,
@@ -331,6 +367,59 @@ export default function AdminOppgaverPage() {
       setFeil(`Fetch-feil: ${String(err)}`)
     } finally {
       setSletterId(null)
+      if (selectedVenue) {
+        loadTasks(selectedVenue)
+      }
+    }
+  }
+
+  async function toggleHideMode(task: Task) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    const selectedVenue = localStorage.getItem("selectedVenue")
+    const nyttValg = !task.hide_for_6_hours
+
+    try {
+      setFeil("")
+      setStatus("")
+      setSkjulerId(task.id)
+
+      const res = await fetch(`${url}/rest/v1/tasks?id=eq.${task.id}`, {
+        method: "PATCH",
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
+        },
+        body: JSON.stringify({
+          hide_for_6_hours: nyttValg,
+        }),
+      })
+
+      if (!res.ok) {
+        const data = await res.text()
+        setFeil(data || "Kunne ikke oppdatere visning")
+        return
+      }
+
+      setTasks((prev) =>
+        prev.map((item) =>
+          item.id === task.id
+            ? { ...item, hide_for_6_hours: nyttValg }
+            : item
+        )
+      )
+
+      setStatus(
+        nyttValg
+          ? `Oppgaven "${task.name}" skjules i 6 timer etter utføring`
+          : `Oppgaven "${task.name}" vises hele tiden`
+      )
+    } catch (err) {
+      setFeil(`Fetch-feil: ${String(err)}`)
+    } finally {
+      setSkjulerId(null)
       if (selectedVenue) {
         loadTasks(selectedVenue)
       }
@@ -459,6 +548,7 @@ export default function AdminOppgaverPage() {
           sort_order: nesteSortOrder,
           image_url: imageUrl,
           requires_photo: requiresPhoto,
+          hide_for_6_hours: false,
           show_monday: days.monday,
           show_tuesday: days.tuesday,
           show_wednesday: days.wednesday,
@@ -620,7 +710,9 @@ export default function AdminOppgaverPage() {
                   task={task}
                   flytterId={flytterId}
                   sletterId={sletterId}
+                  skjulerId={skjulerId}
                   onDelete={deleteTask}
+                  onToggleHideMode={toggleHideMode}
                 />
               ))}
             </div>
