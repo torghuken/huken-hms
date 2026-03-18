@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, type ReactNode } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   DndContext,
@@ -29,10 +29,12 @@ type TemperatureUnit = {
 
 function SortableUnitCard({
   unit,
-  children,
+  flytterId,
+  onOpen,
 }: {
   unit: TemperatureUnit
-  children: ReactNode
+  flytterId: string | null
+  onOpen: (unit: TemperatureUnit) => void
 }) {
   const {
     attributes,
@@ -46,16 +48,42 @@ function SortableUnitCard({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    opacity: isDragging ? 0.7 : 1,
   }
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={isDragging ? "opacity-70" : ""}
+      onClick={() => onOpen(unit)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault()
+          onOpen(unit)
+        }
+      }}
+      role="button"
+      tabIndex={0}
     >
-      <div {...attributes} {...listeners}>
-        {children}
+      <div className="rounded-2xl bg-white px-6 py-6 text-left text-xl font-semibold text-black shadow-lg">
+        <div className="flex items-start justify-between gap-3">
+          <span>{unit.name}</span>
+
+          <button
+            type="button"
+            onClick={(e) => e.stopPropagation()}
+            {...attributes}
+            {...listeners}
+            className="rounded-lg border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-600"
+            style={{
+              cursor: "grab",
+              touchAction: "none",
+              flexShrink: 0,
+            }}
+          >
+            {flytterId === unit.id ? "Flytter..." : "Dra"}
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -143,17 +171,20 @@ export default function TemperaturPage() {
     for (let i = 0; i < updatedUnits.length; i++) {
       const unit = updatedUnits[i]
 
-      const res = await fetch(`${url}/rest/v1/temperature_units?id=eq.${unit.id}`, {
-        method: "PATCH",
-        headers: {
-          apikey: key,
-          Authorization: `Bearer ${key}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          sort_order: i + 1,
-        }),
-      })
+      const res = await fetch(
+        `${url}/rest/v1/temperature_units?id=eq.${unit.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            apikey: key,
+            Authorization: `Bearer ${key}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            sort_order: i + 1,
+          }),
+        }
+      )
 
       if (!res.ok) {
         const data = await res.text()
@@ -198,12 +229,14 @@ export default function TemperaturPage() {
 
   return (
     <main className="min-h-screen bg-black p-6 text-white">
-      <h1 className="mb-10 text-center text-3xl font-bold">Temperaturkontroll</h1>
+      <h1 className="mb-10 text-center text-3xl font-bold">
+        Temperaturkontroll
+      </h1>
 
       <div className="mx-auto flex max-w-md flex-col gap-4">
         {isLeader && (
           <p className="text-sm text-zinc-400">
-            Admin: hold fingeren på et kort og dra for å endre rekkefølge.
+            Admin: bruk "Dra"-knappen oppe til høyre for å endre rekkefølge.
           </p>
         )}
 
@@ -233,32 +266,12 @@ export default function TemperaturPage() {
             >
               <div className="flex flex-col gap-4">
                 {units.map((unit) => (
-                  <SortableUnitCard key={unit.id} unit={unit}>
-                    <div
-                      className="rounded-2xl bg-white px-6 py-6 text-left text-xl font-semibold text-black shadow-lg"
-                      style={{ touchAction: "none" }}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <span>{unit.name}</span>
-                        <span className="text-sm font-normal text-zinc-500">
-                          {flytterId === unit.id ? "Flytter..." : "Dra"}
-                        </span>
-                      </div>
-
-                      <div className="mt-4">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            velgEnhet(unit)
-                          }}
-                          className="rounded-lg border border-zinc-300 bg-zinc-100 px-4 py-2 text-sm font-medium text-black"
-                        >
-                          Åpne
-                        </button>
-                      </div>
-                    </div>
-                  </SortableUnitCard>
+                  <SortableUnitCard
+                    key={unit.id}
+                    unit={unit}
+                    flytterId={flytterId}
+                    onOpen={velgEnhet}
+                  />
                 ))}
               </div>
             </SortableContext>

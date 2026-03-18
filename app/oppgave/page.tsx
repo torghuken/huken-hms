@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { translations } from "@/lib/translations"
 import {
@@ -61,10 +61,12 @@ function getTodayColumn() {
 
 function SortableTaskCard({
   task,
-  children,
+  flytterId,
+  onOpen,
 }: {
   task: Task
-  children: ReactNode
+  flytterId: string | null
+  onOpen: (task: Task) => void
 }) {
   const {
     attributes,
@@ -78,16 +80,67 @@ function SortableTaskCard({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    opacity: isDragging ? 0.7 : 1,
   }
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={isDragging ? "opacity-70" : ""}
+      onClick={() => onOpen(task)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault()
+          onOpen(task)
+        }
+      }}
+      role="button"
+      tabIndex={0}
     >
-      <div {...attributes} {...listeners}>
-        {children}
+      <div
+        style={{
+          display: "block",
+          width: "100%",
+          padding: "18px 24px",
+          fontSize: "20px",
+          borderRadius: "12px",
+          border: "1px solid #ccc",
+          textAlign: "left",
+          background: "white",
+          color: "#000",
+          cursor: "pointer",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: 12,
+          }}
+        >
+          <span>{task.name}</span>
+
+          <button
+            type="button"
+            onClick={(e) => e.stopPropagation()}
+            {...attributes}
+            {...listeners}
+            style={{
+              padding: "8px 12px",
+              fontSize: "14px",
+              borderRadius: "10px",
+              border: "1px solid #ccc",
+              background: "#f3f3f3",
+              color: "#666",
+              cursor: "grab",
+              touchAction: "none",
+              flexShrink: 0,
+            }}
+          >
+            {flytterId === task.id ? "Flytter..." : "Dra"}
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -284,7 +337,7 @@ export default function OppgavePage() {
 
       {isLeader && (
         <p style={{ color: "#666", marginTop: 8 }}>
-          Admin: hold fingeren på et kort og dra for å endre rekkefølge.
+          Admin: bruk "Dra"-knappen oppe til høyre for å endre rekkefølge.
         </p>
       )}
 
@@ -341,57 +394,12 @@ export default function OppgavePage() {
               }}
             >
               {tasks.map((task) => (
-                <SortableTaskCard key={task.id} task={task}>
-                  <div
-                    style={{
-                      display: "block",
-                      padding: "18px 24px",
-                      fontSize: "20px",
-                      borderRadius: "12px",
-                      border: "1px solid #ccc",
-                      minWidth: "280px",
-                      textAlign: "left",
-                      background: "white",
-                      color: "#000",
-                      touchAction: "none",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        gap: 12,
-                      }}
-                    >
-                      <span>{task.name}</span>
-                      <span style={{ fontSize: "14px", color: "#666" }}>
-                        {flytterId === task.id ? "Flytter..." : "Dra"}
-                      </span>
-                    </div>
-
-                    <div style={{ marginTop: 12 }}>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          velgOppgave(task)
-                        }}
-                        style={{
-                          padding: "10px 14px",
-                          fontSize: "14px",
-                          borderRadius: "10px",
-                          border: "1px solid #ccc",
-                          cursor: "pointer",
-                          background: "#f3f3f3",
-                          color: "#000",
-                        }}
-                      >
-                        Åpne oppgave
-                      </button>
-                    </div>
-                  </div>
-                </SortableTaskCard>
+                <SortableTaskCard
+                  key={task.id}
+                  task={task}
+                  flytterId={flytterId}
+                  onOpen={velgOppgave}
+                />
               ))}
             </div>
           </SortableContext>
