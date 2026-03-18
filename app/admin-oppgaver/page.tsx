@@ -1,12 +1,28 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 
 type Task = {
   id: string
   name: string
   active: boolean
+  sort_order: number | null
   list_id: string | null
   image_url: string | null
   requires_photo: boolean
@@ -49,6 +65,40 @@ const defaultDays: DaysState = {
   sunday: true,
 }
 
+function SortableTaskCard({
+  task,
+  children,
+}: {
+  task: Task
+  children: ReactNode
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={isDragging ? "opacity-70" : ""}
+    >
+      <div {...attributes} {...listeners}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
 export default function AdminOppgaverPage() {
   const router = useRouter()
 
@@ -64,6 +114,9 @@ export default function AdminOppgaverPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [lasterId, setLasterId] = useState<string | null>(null)
   const [sletterId, setSletterId] = useState<string | null>(null)
+  const [flytterId, setFlytterId] = useState<string | null>(null)
+
+  const sensors = useSensors(useSensor(PointerSensor))
 
   useEffect(() => {
     const employeeId = localStorage.getItem("selectedEmployeeId")
@@ -145,7 +198,7 @@ export default function AdminOppgaverPage() {
       setFeil("")
 
       const res = await fetch(
-        `${url}/rest/v1/tasks?select=id,name,active,list_id,image_url,requires_photo,show_monday,show_tuesday,show_wednesday,show_thursday,show_friday,show_saturday,show_sunday,task_lists!inner(id,name,venue_id)&task_lists.venue_id=eq.${selectedVenue}&order=name`,
+        `${url}/rest/v1/tasks?select=id,name,active,sort_order,list_id,image_url,requires_photo,show_monday,show_tuesday,show_wednesday,show_thursday,show_friday,show_saturday,show_sunday,task_lists!inner(id,name,venue_id)&task_lists.venue_id=eq.${selectedVenue}&order=list_id.asc,sort_order.asc,name.asc`,
         {
           headers: {
             apikey: key,
@@ -320,6 +373,17 @@ export default function AdminOppgaverPage() {
     return `${url}/storage/v1/object/public/hms-images/${filename}`
   }
 
+  function getNextSortOrderForList(listId: string) {
+    const sammeListe = tasks.filter((task) => task.list_id === listId)
+    if (sammeListe.length === 0) return 1
+
+    const høyeste = Math.max(
+      ...sammeListe.map((task) => Number(task.sort_order ?? 0))
+    )
+
+    return høyeste + 1
+  }
+
   async function leggTilOppgave() {
     const selectedVenue = localStorage.getItem("selectedVenue")
 
@@ -350,6 +414,7 @@ export default function AdminOppgaverPage() {
 
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    const nesteSortOrder = getNextSortOrderForList(valgtListeId)
 
     try {
       setFeil("")
@@ -369,6 +434,7 @@ export default function AdminOppgaverPage() {
           name: nyOppgave.trim(),
           list_id: valgtListeId,
           active: true,
+          sort_order: nesteSortOrder,
           image_url: imageUrl,
           requires_photo: requiresPhoto,
           show_monday: days.monday,
@@ -418,21 +484,200 @@ export default function AdminOppgaverPage() {
     return activeDays.join(" • ")
   }
 
-  const aktiveTasks = tasks.filter((task) => task.active)
+  function getTasksForList(listName: string) {
+    return tasks
+      .filter((task) => task.active && task.task_lists?.name === listName)
+      .sort((a, b) => {
+        const aOrder = Number(a.sort_order ?? 0)
+        const bOrder = Number(b.sort_order ?? 0)
+        if (aOrder !== bOrder) return aOrder - bOrder
+        return a.name.localeCompare(b.name)
+      })
+  }
 
-  const dagligeOppgaver = aktiveTasks.filter(
-    (task) => task.task_lists?.name === "Daglige oppgaver"
-  )
+  async function saveSortOrderForList(updatedListTasks: Task[]) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-  const andreOppgaver = aktiveTasks.filter(
-    (task) => task.task_lists?.name === "Andre oppgaver"
-  )
+    for (let i = 0; i < updatedListTasks.length; i++) {
+      const task = updatedListTasks[i]
 
-  const andreListerOppgaver = aktiveTasks.filter(
-    (task) =>
-      task.task_lists?.name !== "Daglige oppgaver" &&
-      task.task_lists?.name !== "Andre oppgaver"
-  )
+      const res = await fetch(`${url}/rest/v1/tasks?id=eq.${task.id}`, {
+        method: "PATCH",
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sort_order: i + 1,
+        }),
+      })
+
+      if (!res.ok) {
+        const data = await res.text()
+        throw new Error(data || "Kunne ikke lagre rekkefølge")
+      }
+    }
+  }
+
+  async function handleDragEndForList(
+    listName: string,
+    event: DragEndEvent
+  ) {
+    const { active, over } = event
+
+    if (!over || active.id === over.id) return
+
+    const listTasks = getTasksForList(listName)
+    const oldIndex = listTasks.findIndex((task) => task.id === active.id)
+    const newIndex = listTasks.findIndex((task) => task.id === over.id)
+
+    if (oldIndex === -1 || newIndex === -1) return
+
+    const movedList = arrayMove(listTasks, oldIndex, newIndex)
+    const movedIds = new Set(movedList.map((task) => task.id))
+
+    const updatedMovedList = movedList.map((task, index) => ({
+      ...task,
+      sort_order: index + 1,
+    }))
+
+    setTasks((prev) => [
+      ...prev.filter((task) => !movedIds.has(task.id)),
+      ...updatedMovedList,
+    ])
+
+    try {
+      setFeil("")
+      setStatus("")
+      setFlytterId(String(active.id))
+
+      await saveSortOrderForList(updatedMovedList)
+
+      setStatus(`Rekkefølgen for "${listName}" er lagret`)
+    } catch (err) {
+      setFeil(`Feil: ${String(err)}`)
+      const selectedVenue = localStorage.getItem("selectedVenue")
+      if (selectedVenue) {
+        loadTasks(selectedVenue)
+      }
+    } finally {
+      setFlytterId(null)
+    }
+  }
+
+  const dagligeOppgaver = getTasksForList("Daglige oppgaver")
+  const andreOppgaver = getTasksForList("Andre oppgaver")
+  const andreListerOppgaver = tasks
+    .filter(
+      (task) =>
+        task.active &&
+        task.task_lists?.name !== "Daglige oppgaver" &&
+        task.task_lists?.name !== "Andre oppgaver"
+    )
+    .sort((a, b) => {
+      const aOrder = Number(a.sort_order ?? 0)
+      const bOrder = Number(b.sort_order ?? 0)
+      if (a.task_lists?.name !== b.task_lists?.name) {
+        return (a.task_lists?.name || "").localeCompare(b.task_lists?.name || "")
+      }
+      if (aOrder !== bOrder) return aOrder - bOrder
+      return a.name.localeCompare(b.name)
+    })
+
+  function renderTaskCard(task: Task) {
+    return (
+      <div className="rounded-xl bg-white p-4 text-black">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex-1">
+            <span className="font-medium">{task.name}</span>
+            <p className="mt-1 text-xs text-zinc-500">
+              Hold fingeren på kortet og dra for å flytte
+            </p>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => toggleActive(task)}
+              disabled={
+                flytterId === task.id ||
+                lasterId === task.id ||
+                sletterId === task.id
+              }
+              className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                task.active
+                  ? "bg-green-500 text-white"
+                  : "bg-zinc-400 text-white"
+              }`}
+            >
+              {lasterId === task.id ? "Lagrer..." : task.active ? "På" : "Av"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => deleteTask(task)}
+              disabled={
+                flytterId === task.id ||
+                lasterId === task.id ||
+                sletterId === task.id
+              }
+              className="rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white"
+            >
+              {sletterId === task.id ? "Fjerner..." : "Slett"}
+            </button>
+          </div>
+        </div>
+
+        <p className="mt-2 text-sm text-zinc-600">{formatDays(task)}</p>
+        <p className="mt-1 text-sm text-zinc-600">
+          {task.requires_photo ? "Må ta bilde" : "Må bekreftes"}
+        </p>
+
+        {task.image_url && (
+          <img
+            src={task.image_url}
+            alt="Oppgavebilde"
+            className="mt-3 max-h-40 rounded-xl"
+          />
+        )}
+      </div>
+    )
+  }
+
+  function renderSortableSection(title: string, sectionTasks: Task[]) {
+    return (
+      <div>
+        <h2 className="mb-3 text-xl font-semibold">{title}</h2>
+
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={(event) => handleDragEndForList(title, event)}
+        >
+          <SortableContext
+            items={sectionTasks.map((task) => task.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-3">
+              {sectionTasks.length === 0 && (
+                <div className="rounded-xl bg-zinc-900 p-4 text-zinc-300">
+                  Ingen oppgaver enda
+                </div>
+              )}
+
+              {sectionTasks.map((task) => (
+                <SortableTaskCard key={task.id} task={task}>
+                  {renderTaskCard(task)}
+                </SortableTaskCard>
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      </div>
+    )
+  }
 
   return (
     <main className="min-h-screen bg-black p-6 text-white">
@@ -573,174 +818,25 @@ export default function AdminOppgaverPage() {
           </div>
         </div>
 
-        <div>
-          <h2 className="mb-3 text-xl font-semibold">Daglige oppgaver</h2>
-
-          <div className="space-y-3">
-            {dagligeOppgaver.length === 0 && (
-              <div className="rounded-xl bg-zinc-900 p-4 text-zinc-300">
-                Ingen daglige oppgaver enda
-              </div>
-            )}
-
-            {dagligeOppgaver.map((task) => (
-              <div key={task.id} className="rounded-xl bg-white p-4 text-black">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="font-medium">{task.name}</span>
-
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => toggleActive(task)}
-                      disabled={lasterId === task.id || sletterId === task.id}
-                      className={`rounded-lg px-3 py-2 text-sm font-semibold ${
-                        task.active
-                          ? "bg-green-500 text-white"
-                          : "bg-zinc-400 text-white"
-                      }`}
-                    >
-                      {lasterId === task.id ? "Lagrer..." : task.active ? "På" : "Av"}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => deleteTask(task)}
-                      disabled={lasterId === task.id || sletterId === task.id}
-                      className="rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white"
-                    >
-                      {sletterId === task.id ? "Fjerner..." : "Slett"}
-                    </button>
-                  </div>
-                </div>
-
-                <p className="mt-2 text-sm text-zinc-600">{formatDays(task)}</p>
-                <p className="mt-1 text-sm text-zinc-600">
-                  {task.requires_photo ? "Må ta bilde" : "Må bekreftes"}
-                </p>
-
-                {task.image_url && (
-                  <img
-                    src={task.image_url}
-                    alt="Oppgavebilde"
-                    className="mt-3 max-h-40 rounded-xl"
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <h2 className="mb-3 text-xl font-semibold">Andre oppgaver</h2>
-
-          <div className="space-y-3">
-            {andreOppgaver.length === 0 && (
-              <div className="rounded-xl bg-zinc-900 p-4 text-zinc-300">
-                Ingen andre oppgaver enda
-              </div>
-            )}
-
-            {andreOppgaver.map((task) => (
-              <div key={task.id} className="rounded-xl bg-white p-4 text-black">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="font-medium">{task.name}</span>
-
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => toggleActive(task)}
-                      disabled={lasterId === task.id || sletterId === task.id}
-                      className={`rounded-lg px-3 py-2 text-sm font-semibold ${
-                        task.active
-                          ? "bg-green-500 text-white"
-                          : "bg-zinc-400 text-white"
-                      }`}
-                    >
-                      {lasterId === task.id ? "Lagrer..." : task.active ? "På" : "Av"}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => deleteTask(task)}
-                      disabled={lasterId === task.id || sletterId === task.id}
-                      className="rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white"
-                    >
-                      {sletterId === task.id ? "Fjerner..." : "Slett"}
-                    </button>
-                  </div>
-                </div>
-
-                <p className="mt-2 text-sm text-zinc-600">{formatDays(task)}</p>
-                <p className="mt-1 text-sm text-zinc-600">
-                  {task.requires_photo ? "Må ta bilde" : "Må bekreftes"}
-                </p>
-
-                {task.image_url && (
-                  <img
-                    src={task.image_url}
-                    alt="Oppgavebilde"
-                    className="mt-3 max-h-40 rounded-xl"
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+        {renderSortableSection("Daglige oppgaver", dagligeOppgaver)}
+        {renderSortableSection("Andre oppgaver", andreOppgaver)}
 
         {andreListerOppgaver.length > 0 && (
           <div>
             <h2 className="mb-3 text-xl font-semibold">Flere oppgaver</h2>
 
-            <div className="space-y-3">
-              {andreListerOppgaver.map((task) => (
-                <div key={task.id} className="rounded-xl bg-white p-4 text-black">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="font-medium">{task.name}</p>
-                      <p className="text-sm text-zinc-500">
-                        {task.task_lists?.name || "Uten kategori"}
-                      </p>
-                    </div>
+            <div className="space-y-6">
+              {Array.from(
+                new Set(
+                  andreListerOppgaver.map((task) => task.task_lists?.name || "Uten kategori")
+                )
+              ).map((listName) => {
+                const sectionTasks = andreListerOppgaver.filter(
+                  (task) => (task.task_lists?.name || "Uten kategori") === listName
+                )
 
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => toggleActive(task)}
-                        disabled={lasterId === task.id || sletterId === task.id}
-                        className={`rounded-lg px-3 py-2 text-sm font-semibold ${
-                          task.active
-                            ? "bg-green-500 text-white"
-                            : "bg-zinc-400 text-white"
-                        }`}
-                      >
-                        {lasterId === task.id ? "Lagrer..." : task.active ? "På" : "Av"}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => deleteTask(task)}
-                        disabled={lasterId === task.id || sletterId === task.id}
-                        className="rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white"
-                      >
-                        {sletterId === task.id ? "Fjerner..." : "Slett"}
-                      </button>
-                    </div>
-                  </div>
-
-                  <p className="mt-2 text-sm text-zinc-600">{formatDays(task)}</p>
-                  <p className="mt-1 text-sm text-zinc-600">
-                    {task.requires_photo ? "Må ta bilde" : "Må bekreftes"}
-                  </p>
-
-                  {task.image_url && (
-                    <img
-                      src={task.image_url}
-                      alt="Oppgavebilde"
-                      className="mt-3 max-h-40 rounded-xl"
-                    />
-                  )}
-                </div>
-              ))}
+                return renderSortableSection(listName, sectionTasks)
+              })}
             </div>
           </div>
         )}
