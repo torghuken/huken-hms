@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   DndContext,
   PointerSensor,
+  TouchSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -67,10 +68,14 @@ const defaultDays: DaysState = {
 
 function SortableTaskCard({
   task,
-  children,
+  flytterId,
+  sletterId,
+  onDelete,
 }: {
   task: Task
-  children: ReactNode
+  flytterId: string | null
+  sletterId: string | null
+  onDelete: (task: Task) => void
 }) {
   const {
     attributes,
@@ -84,16 +89,74 @@ function SortableTaskCard({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    opacity: isDragging ? 0.7 : 1,
+  }
+
+  function formatDays(task: Task) {
+    const activeDays: string[] = []
+    if (task.show_monday) activeDays.push("Mandag")
+    if (task.show_tuesday) activeDays.push("Tirsdag")
+    if (task.show_wednesday) activeDays.push("Onsdag")
+    if (task.show_thursday) activeDays.push("Torsdag")
+    if (task.show_friday) activeDays.push("Fredag")
+    if (task.show_saturday) activeDays.push("Lørdag")
+    if (task.show_sunday) activeDays.push("Søndag")
+
+    if (activeDays.length === 7) return "Alle dager"
+    return activeDays.join(" • ")
   }
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={isDragging ? "opacity-70" : ""}
-    >
-      <div {...attributes} {...listeners}>
-        {children}
+    <div ref={setNodeRef} style={style}>
+      <div className="rounded-xl bg-white p-4 text-black">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <span className="font-medium">{task.name}</span>
+            <p className="mt-1 text-xs text-zinc-500">
+              Bruk Dra-knappen for å flytte
+            </p>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation()
+                onDelete(task)
+              }}
+              disabled={flytterId === task.id || sletterId === task.id}
+              className="rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              {sletterId === task.id ? "Fjerner..." : "Slett"}
+            </button>
+
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              {...attributes}
+              {...listeners}
+              className="rounded-lg border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm font-semibold text-zinc-700"
+              style={{ touchAction: "none", cursor: "grab" }}
+            >
+              {flytterId === task.id ? "Flytter..." : "Dra"}
+            </button>
+          </div>
+        </div>
+
+        <p className="mt-2 text-sm text-zinc-600">{formatDays(task)}</p>
+        <p className="mt-1 text-sm text-zinc-600">
+          {task.requires_photo ? "Må ta bilde" : "Må bekreftes"}
+        </p>
+
+        {task.image_url && (
+          <img
+            src={task.image_url}
+            alt="Oppgavebilde"
+            className="mt-3 max-h-40 rounded-xl"
+          />
+        )}
       </div>
     </div>
   )
@@ -112,11 +175,18 @@ export default function AdminOppgaverPage() {
   const [days, setDays] = useState<DaysState>(defaultDays)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [lasterId, setLasterId] = useState<string | null>(null)
   const [sletterId, setSletterId] = useState<string | null>(null)
   const [flytterId, setFlytterId] = useState<string | null>(null)
 
-  const sensors = useSensors(useSensor(PointerSensor))
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 150,
+        tolerance: 5,
+      },
+    })
+  )
 
   useEffect(() => {
     const employeeId = localStorage.getItem("selectedEmployeeId")
@@ -220,55 +290,6 @@ export default function AdminOppgaverPage() {
     }
   }
 
-  async function toggleActive(task: Task) {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    const selectedVenue = localStorage.getItem("selectedVenue")
-
-    try {
-      setFeil("")
-      setStatus("")
-      setLasterId(task.id)
-
-      const res = await fetch(`${url}/rest/v1/tasks?id=eq.${task.id}`, {
-        method: "PATCH",
-        headers: {
-          apikey: key,
-          Authorization: `Bearer ${key}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          active: !task.active,
-        }),
-      })
-
-      if (!res.ok) {
-        const data = await res.text()
-        setFeil(data || "Kunne ikke endre oppgave")
-        return
-      }
-
-      setTasks((prev) =>
-        prev.map((item) =>
-          item.id === task.id ? { ...item, active: !item.active } : item
-        )
-      )
-
-      setStatus(
-        task.active
-          ? `Oppgaven "${task.name}" er slått av`
-          : `Oppgaven "${task.name}" er slått på`
-      )
-    } catch (err) {
-      setFeil(`Fetch-feil: ${String(err)}`)
-    } finally {
-      setLasterId(null)
-      if (selectedVenue) {
-        loadTasks(selectedVenue)
-      }
-    }
-  }
-
   async function deleteTask(task: Task) {
     const confirmed = window.confirm(
       `Er du sikker på at du vil fjerne oppgaven "${task.name}"? Den blir satt som inaktiv.`
@@ -291,6 +312,7 @@ export default function AdminOppgaverPage() {
           apikey: key,
           Authorization: `Bearer ${key}`,
           "Content-Type": "application/json",
+          Prefer: "return=representation",
         },
         body: JSON.stringify({
           active: false,
@@ -470,20 +492,6 @@ export default function AdminOppgaverPage() {
     }
   }
 
-  function formatDays(task: Task) {
-    const activeDays: string[] = []
-    if (task.show_monday) activeDays.push("Mandag")
-    if (task.show_tuesday) activeDays.push("Tirsdag")
-    if (task.show_wednesday) activeDays.push("Onsdag")
-    if (task.show_thursday) activeDays.push("Torsdag")
-    if (task.show_friday) activeDays.push("Fredag")
-    if (task.show_saturday) activeDays.push("Lørdag")
-    if (task.show_sunday) activeDays.push("Søndag")
-
-    if (activeDays.length === 7) return "Alle dager"
-    return activeDays.join(" • ")
-  }
-
   function getTasksForList(listName: string) {
     return tasks
       .filter((task) => task.active && task.task_lists?.name === listName)
@@ -554,7 +562,6 @@ export default function AdminOppgaverPage() {
       setFlytterId(String(active.id))
 
       await saveSortOrderForList(updatedMovedList)
-
       setStatus(`Rekkefølgen for "${listName}" er lagret`)
     } catch (err) {
       setFeil(`Feil: ${String(err)}`)
@@ -586,66 +593,6 @@ export default function AdminOppgaverPage() {
       return a.name.localeCompare(b.name)
     })
 
-  function renderTaskCard(task: Task) {
-    return (
-      <div className="rounded-xl bg-white p-4 text-black">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex-1">
-            <span className="font-medium">{task.name}</span>
-            <p className="mt-1 text-xs text-zinc-500">
-              Hold fingeren på kortet og dra for å flytte
-            </p>
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => toggleActive(task)}
-              disabled={
-                flytterId === task.id ||
-                lasterId === task.id ||
-                sletterId === task.id
-              }
-              className={`rounded-lg px-3 py-2 text-sm font-semibold ${
-                task.active
-                  ? "bg-green-500 text-white"
-                  : "bg-zinc-400 text-white"
-              }`}
-            >
-              {lasterId === task.id ? "Lagrer..." : task.active ? "På" : "Av"}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => deleteTask(task)}
-              disabled={
-                flytterId === task.id ||
-                lasterId === task.id ||
-                sletterId === task.id
-              }
-              className="rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white"
-            >
-              {sletterId === task.id ? "Fjerner..." : "Slett"}
-            </button>
-          </div>
-        </div>
-
-        <p className="mt-2 text-sm text-zinc-600">{formatDays(task)}</p>
-        <p className="mt-1 text-sm text-zinc-600">
-          {task.requires_photo ? "Må ta bilde" : "Må bekreftes"}
-        </p>
-
-        {task.image_url && (
-          <img
-            src={task.image_url}
-            alt="Oppgavebilde"
-            className="mt-3 max-h-40 rounded-xl"
-          />
-        )}
-      </div>
-    )
-  }
-
   function renderSortableSection(title: string, sectionTasks: Task[]) {
     return (
       <div>
@@ -668,9 +615,13 @@ export default function AdminOppgaverPage() {
               )}
 
               {sectionTasks.map((task) => (
-                <SortableTaskCard key={task.id} task={task}>
-                  {renderTaskCard(task)}
-                </SortableTaskCard>
+                <SortableTaskCard
+                  key={task.id}
+                  task={task}
+                  flytterId={flytterId}
+                  sletterId={sletterId}
+                  onDelete={deleteTask}
+                />
               ))}
             </div>
           </SortableContext>
@@ -828,14 +779,20 @@ export default function AdminOppgaverPage() {
             <div className="space-y-6">
               {Array.from(
                 new Set(
-                  andreListerOppgaver.map((task) => task.task_lists?.name || "Uten kategori")
+                  andreListerOppgaver.map(
+                    (task) => task.task_lists?.name || "Uten kategori"
+                  )
                 )
               ).map((listName) => {
                 const sectionTasks = andreListerOppgaver.filter(
                   (task) => (task.task_lists?.name || "Uten kategori") === listName
                 )
 
-                return renderSortableSection(listName, sectionTasks)
+                return (
+                  <div key={listName}>
+                    {renderSortableSection(listName, sectionTasks)}
+                  </div>
+                )
               })}
             </div>
           </div>

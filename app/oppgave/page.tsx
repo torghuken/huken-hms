@@ -63,10 +63,12 @@ function SortableTaskCard({
   task,
   flytterId,
   onOpen,
+  onDelete,
 }: {
   task: Task
   flytterId: string | null
   onOpen: (task: Task) => void
+  onDelete: (task: Task) => void
 }) {
   const {
     attributes,
@@ -121,25 +123,54 @@ function SortableTaskCard({
         >
           <span>{task.name}</span>
 
-          <button
-            type="button"
-            onClick={(e) => e.stopPropagation()}
-            {...attributes}
-            {...listeners}
+          <div
             style={{
-              padding: "8px 12px",
-              fontSize: "14px",
-              borderRadius: "10px",
-              border: "1px solid #ccc",
-              background: "#f3f3f3",
-              color: "#666",
-              cursor: "grab",
-              touchAction: "none",
+              display: "flex",
+              gap: 8,
+              alignItems: "center",
               flexShrink: 0,
             }}
           >
-            {flytterId === task.id ? "Flytter..." : "Dra"}
-          </button>
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation()
+                onDelete(task)
+              }}
+              style={{
+                padding: "8px 12px",
+                fontSize: "14px",
+                borderRadius: "10px",
+                border: "1px solid #dc2626",
+                background: "#ef4444",
+                color: "white",
+                cursor: "pointer",
+              }}
+            >
+              Slett
+            </button>
+
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              {...attributes}
+              {...listeners}
+              style={{
+                padding: "8px 12px",
+                fontSize: "14px",
+                borderRadius: "10px",
+                border: "1px solid #ccc",
+                background: "#f3f3f3",
+                color: "#666",
+                cursor: "grab",
+                touchAction: "none",
+              }}
+            >
+              {flytterId === task.id ? "Flytter..." : "Dra"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -257,6 +288,39 @@ export default function OppgavePage() {
     }
   }
 
+  async function slettOppgave(task: Task) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+    try {
+      setFeil("")
+      setStatus("")
+
+      const res = await fetch(`${url}/rest/v1/tasks?id=eq.${task.id}`, {
+        method: "PATCH",
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
+        },
+        body: JSON.stringify({
+          active: false,
+        }),
+      })
+
+      if (!res.ok) {
+        const data = await res.text()
+        throw new Error(data || "Kunne ikke slette oppgave")
+      }
+
+      setTasks((prev) => prev.filter((item) => item.id !== task.id))
+      setStatus(`Oppgaven "${task.name}" ble slettet`)
+    } catch (err) {
+      setFeil(`Feil ved sletting: ${String(err)}`)
+    }
+  }
+
   async function saveSortOrder(updatedTasks: Task[]) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -337,7 +401,7 @@ export default function OppgavePage() {
 
       {isLeader && (
         <p style={{ color: "#666", marginTop: 8 }}>
-          Admin: bruk "Dra"-knappen oppe til høyre for å endre rekkefølge.
+          Admin: bruk "Dra" for å endre rekkefølge eller "Slett" for å fjerne oppgaven.
         </p>
       )}
 
@@ -399,6 +463,7 @@ export default function OppgavePage() {
                   task={task}
                   flytterId={flytterId}
                   onOpen={velgOppgave}
+                  onDelete={slettOppgave}
                 />
               ))}
             </div>
