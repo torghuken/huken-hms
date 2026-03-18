@@ -10,6 +10,7 @@ export default function TemperaturEnhetPage() {
 
   const [ansatt, setAnsatt] = useState("")
   const [unitName, setUnitName] = useState("")
+  const [unitImageUrl, setUnitImageUrl] = useState<string | null>(null)
   const [employeeId, setEmployeeId] = useState<string | null>(null)
   const [value, setValue] = useState("")
   const [status, setStatus] = useState("")
@@ -28,7 +29,45 @@ export default function TemperaturEnhetPage() {
     setAnsatt(employeeName || "")
     setEmployeeId(employeeIdStored)
     setUnitName(unitNameStored || "")
-  }, [router])
+
+    if (unitId) {
+      loadUnit(unitId)
+    }
+  }, [router, unitId])
+
+  async function loadUnit(id: string) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+    try {
+      const res = await fetch(
+        `${url}/rest/v1/temperature_units?select=id,name,image_url&id=eq.${id}&limit=1`,
+        {
+          headers: {
+            apikey: key,
+            Authorization: `Bearer ${key}`,
+          },
+        }
+      )
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setStatus(data.message || "Kunne ikke hente enhet")
+        return
+      }
+
+      const unit = data?.[0]
+
+      if (unit?.name) {
+        setUnitName(unit.name)
+      }
+
+      setUnitImageUrl(unit?.image_url || null)
+    } catch (err) {
+      setStatus(`Feil ved henting av enhet: ${String(err)}`)
+    }
+  }
 
   function pressKey(key: string) {
     if (key === "back") {
@@ -119,33 +158,50 @@ export default function TemperaturEnhetPage() {
 
       <div className="mx-auto flex max-w-md flex-col">
         <p className="text-sm text-zinc-400">Ansatt: {ansatt}</p>
-        <h1 className="mt-2 text-center text-3xl font-bold">{unitName || "Temperatur"}</h1>
+        <h1 className="mt-2 text-center text-3xl font-bold">
+          {unitName || "Temperatur"}
+        </h1>
 
-        <div className="mt-10 rounded-3xl border border-zinc-700 bg-zinc-900 py-8 text-center">
-          <p className="text-7xl font-bold">{visning()}</p>
-        </div>
+        <div
+          className="mt-8 overflow-hidden rounded-3xl border border-zinc-700"
+          style={
+            unitImageUrl
+              ? {
+                  backgroundImage: `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.7)), url(${unitImageUrl})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }
+              : {
+                  background: "#18181b",
+                }
+          }
+        >
+          <div className="p-5">
+            <div className="rounded-3xl border border-white/10 bg-black/35 py-8 text-center backdrop-blur-[1px]">
+              <p className="text-7xl font-bold">{visning()}</p>
+            </div>
 
-        <div className="mt-8 grid grid-cols-3 gap-3">
-          {keys.flat().map((key) => {
-            const label =
-              key === "back" ? "⌫" : key === "ok" ? "OK" : key
+            <div className="mt-6 grid grid-cols-3 gap-3">
+              {keys.flat().map((key) => {
+                const label = key === "back" ? "⌫" : key === "ok" ? "OK" : key
+                const isOk = key === "ok"
 
-            const isOk = key === "ok"
-
-            return (
-              <button
-                key={key}
-                onClick={() => pressKey(key)}
-                className={`h-24 rounded-2xl text-3xl font-bold shadow-lg active:scale-95 transition ${
-                  isOk
-                    ? "bg-white text-black"
-                    : "bg-zinc-800 text-white"
-                }`}
-              >
-                {label}
-              </button>
-            )
-          })}
+                return (
+                  <button
+                    key={key}
+                    onClick={() => pressKey(key)}
+                    className={`h-24 rounded-2xl text-3xl font-bold shadow-lg transition active:scale-95 ${
+                      isOk
+                        ? "bg-white text-black"
+                        : "border border-white/10 bg-black/45 text-white backdrop-blur-[1px]"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         </div>
 
         {status && (

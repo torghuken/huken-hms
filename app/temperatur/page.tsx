@@ -25,6 +25,7 @@ type TemperatureUnit = {
   active: boolean
   sort_order?: number | null
   venue_id?: string | null
+  image_url?: string | null
 }
 
 function SortableUnitCard({
@@ -71,6 +72,7 @@ function SortableUnitCard({
 
           <button
             type="button"
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
             {...attributes}
             {...listeners}
@@ -136,7 +138,7 @@ export default function TemperaturPage() {
       setFeil("")
 
       const res = await fetch(
-        `${url}/rest/v1/temperature_units?select=id,name,active,sort_order,venue_id&venue_id=eq.${venue}&active=eq.true&order=sort_order.asc,name.asc`,
+        `${url}/rest/v1/temperature_units?select=id,name,active,sort_order,venue_id,image_url&venue_id=eq.${venue}&active=eq.true&order=sort_order.asc,name.asc`,
         {
           headers: {
             apikey: key,
@@ -161,6 +163,13 @@ export default function TemperaturPage() {
   function velgEnhet(unit: TemperatureUnit) {
     localStorage.setItem("selectedTemperatureUnitId", unit.id)
     localStorage.setItem("selectedTemperatureUnitName", unit.name)
+
+    if (unit.image_url) {
+      localStorage.setItem("selectedTemperatureUnitImageUrl", unit.image_url)
+    } else {
+      localStorage.removeItem("selectedTemperatureUnitImageUrl")
+    }
+
     router.push(`/temperatur/${unit.id}`)
   }
 
