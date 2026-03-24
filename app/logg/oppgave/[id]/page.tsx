@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
+import { useLanguage } from "@/lib/language"
 
 type LogItem = {
   id: string
@@ -16,11 +17,71 @@ type LogItem = {
 type TaskInfo = {
   id: string
   name: string
+  name_no?: string | null
+  name_en?: string | null
+  name_es?: string | null
+}
+
+type UiLanguage = "no" | "en" | "es"
+
+const taskHistoryTexts: Record<
+  UiLanguage,
+  {
+    history: string
+    fullHistory: string
+    taskNotFoundForVenue: string
+    couldNotFetchHistory: string
+    unknown: string
+    registration: string
+    noHistoryYet: string
+  }
+> = {
+  no: {
+    history: "Historikk",
+    fullHistory: "Full historikk",
+    taskNotFoundForVenue: "Fant ikke oppgaven for valgt sted",
+    couldNotFetchHistory: "Kunne ikke hente historikk",
+    unknown: "Ukjent",
+    registration: "Registrering",
+    noHistoryYet: "Ingen historikk ennå",
+  },
+  en: {
+    history: "History",
+    fullHistory: "Full history",
+    taskNotFoundForVenue: "Could not find the task for the selected venue",
+    couldNotFetchHistory: "Could not fetch history",
+    unknown: "Unknown",
+    registration: "Registration",
+    noHistoryYet: "No history yet",
+  },
+  es: {
+    history: "Historial",
+    fullHistory: "Historial completo",
+    taskNotFoundForVenue: "No se encontró la tarea para el local seleccionado",
+    couldNotFetchHistory: "No se pudo obtener el historial",
+    unknown: "Desconocido",
+    registration: "Registro",
+    noHistoryYet: "Aún no hay historial",
+  },
+}
+
+function getTaskDisplayName(
+  task: TaskInfo | null,
+  language: "no" | "en" | "es"
+) {
+  if (!task) return ""
+  if (language === "en") return task.name_en || task.name_no || task.name
+  if (language === "es") return task.name_es || task.name_no || task.name
+  return task.name_no || task.name
 }
 
 export default function OppgaveHistorikkPage() {
   const router = useRouter()
   const params = useParams()
+  const { t, language } = useLanguage()
+  const currentLanguage: UiLanguage =
+    language === "en" || language === "es" ? language : "no"
+  const text = taskHistoryTexts[currentLanguage]
   const taskId = params?.id as string
 
   const [task, setTask] = useState<TaskInfo | null>(null)
@@ -60,7 +121,7 @@ export default function OppgaveHistorikkPage() {
       setFeil("")
 
       const taskRes = await fetch(
-        `${url}/rest/v1/tasks?select=id,name,list_id,task_lists!inner(id,name,venue_id)&id=eq.${taskId}&task_lists.venue_id=eq.${selectedVenue}`,
+        `${url}/rest/v1/tasks?select=id,name,name_no,name_en,name_es,list_id,task_lists!inner(id,name,venue_id)&id=eq.${taskId}&task_lists.venue_id=eq.${selectedVenue}`,
         {
           headers: {
             apikey: key,
@@ -72,13 +133,16 @@ export default function OppgaveHistorikkPage() {
       const taskData = await taskRes.json()
 
       if (!taskRes.ok || !taskData.length) {
-        setFeil("Fant ikke oppgaven for valgt sted")
+        setFeil(`${t("error")}: ${text.taskNotFoundForVenue}`)
         return
       }
 
       setTask({
         id: taskData[0].id,
         name: taskData[0].name,
+        name_no: taskData[0].name_no,
+        name_en: taskData[0].name_en,
+        name_es: taskData[0].name_es,
       })
 
       const logRes = await fetch(
@@ -94,13 +158,13 @@ export default function OppgaveHistorikkPage() {
       const logData = await logRes.json()
 
       if (!logRes.ok) {
-        setFeil(logData.message || "Kunne ikke hente historikk")
+        setFeil(logData.message || `${t("error")}: ${text.couldNotFetchHistory}`)
         return
       }
 
       setLogs(logData)
     } catch (err) {
-      setFeil(`Fetch-feil: ${String(err)}`)
+      setFeil(`${t("fetchError")}: ${String(err)}`)
     }
   }
 
@@ -108,10 +172,10 @@ export default function OppgaveHistorikkPage() {
     <main className="min-h-screen bg-black px-6 pt-16 text-white">
       <div className="mx-auto max-w-md">
         <h1 className="mb-2 text-center text-3xl font-bold">
-          {task?.name || "Historikk"}
+          {getTaskDisplayName(task, language) || text.history}
         </h1>
 
-        <p className="mb-10 text-center text-zinc-400">Full historikk</p>
+        <p className="mb-10 text-center text-zinc-400">{text.fullHistory}</p>
 
         {feil && <p className="mb-6 text-red-400">{feil}</p>}
 
@@ -122,7 +186,7 @@ export default function OppgaveHistorikkPage() {
               className="rounded-2xl bg-white p-5 text-black"
             >
               <p className="text-sm text-zinc-600">
-                {log.employees?.name || "Ukjent"}
+                {log.employees?.name || text.unknown}
               </p>
 
               <p className="text-sm text-zinc-600">
@@ -136,7 +200,7 @@ export default function OppgaveHistorikkPage() {
               {log.image_url && (
                 <img
                   src={log.image_url}
-                  alt="Registrering"
+                  alt={text.registration}
                   className="mt-3 max-h-64 rounded-xl"
                 />
               )}
@@ -144,7 +208,7 @@ export default function OppgaveHistorikkPage() {
           ))}
 
           {logs.length === 0 && !feil && (
-            <p className="text-zinc-400">Ingen historikk ennå</p>
+            <p className="text-zinc-400">{text.noHistoryYet}</p>
           )}
         </div>
 
@@ -152,7 +216,7 @@ export default function OppgaveHistorikkPage() {
           onClick={() => router.back()}
           className="mt-10 w-full rounded-xl border border-zinc-600 py-3 text-zinc-300"
         >
-          Tilbake
+          {t("back")}
         </button>
       </div>
     </main>

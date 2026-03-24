@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { translations } from "@/lib/translations"
+import { useLanguage } from "@/lib/language"
 import {
   DndContext,
   PointerSensor,
@@ -23,6 +23,9 @@ import { CSS } from "@dnd-kit/utilities"
 type Task = {
   id: string
   name: string
+  name_no: string | null
+  name_en: string | null
+  name_es: string | null
   active: boolean
   sort_order: number | null
   image_url: string | null
@@ -68,16 +71,64 @@ function getSixHoursAgoIso() {
   return new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
 }
 
+function normalizeListName(name: string) {
+  return name.trim().toLowerCase()
+}
+
+function isOpeningList(name: string) {
+  const normalized = normalizeListName(name)
+  return (
+    normalized === "åpning" ||
+    normalized === "opening" ||
+    normalized === "apertura"
+  )
+}
+
+function isClosingList(name: string) {
+  const normalized = normalizeListName(name)
+  return (
+    normalized === "stenging" ||
+    normalized === "closing" ||
+    normalized === "cierre"
+  )
+}
+
+function isOtherTasksList(name: string) {
+  const normalized = normalizeListName(name)
+  return (
+    normalized === "andre oppgaver" ||
+    normalized === "other tasks" ||
+    normalized === "otras tareas"
+  )
+}
+
+function getTaskDisplayName(
+  task: Task,
+  language: "no" | "en" | "es"
+) {
+  if (language === "en") return task.name_en || task.name_no || task.name
+  if (language === "es") return task.name_es || task.name_no || task.name
+  return task.name_no || task.name
+}
+
 function SortableTaskCard({
   task,
   flytterId,
   onOpen,
   onDelete,
+  deleteLabel,
+  dragLabel,
+  movingLabel,
+  displayName,
 }: {
   task: Task
   flytterId: string | null
   onOpen: (task: Task) => void
   onDelete: (task: Task) => void
+  deleteLabel: string
+  dragLabel: string
+  movingLabel: string
+  displayName: string
 }) {
   const {
     attributes,
@@ -130,7 +181,7 @@ function SortableTaskCard({
             gap: 12,
           }}
         >
-          <span>{task.name}</span>
+          <span>{displayName}</span>
 
           <div
             style={{
@@ -157,7 +208,7 @@ function SortableTaskCard({
                 cursor: "pointer",
               }}
             >
-              Slett
+              {deleteLabel}
             </button>
 
             <button
@@ -177,7 +228,7 @@ function SortableTaskCard({
                 touchAction: "none",
               }}
             >
-              {flytterId === task.id ? "Flytter..." : "Dra"}
+              {flytterId === task.id ? movingLabel : dragLabel}
             </button>
           </div>
         </div>
@@ -191,12 +242,12 @@ export default function OppgavePage() {
   const [feil, setFeil] = useState("")
   const [status, setStatus] = useState("")
   const [listeNavn, setListeNavn] = useState("")
-  const [lang, setLang] = useState<"no" | "en" | "es">("no")
   const [isLeader, setIsLeader] = useState(false)
   const [selectedTaskListId, setSelectedTaskListId] = useState("")
   const [hideFor6Hours, setHideFor6Hours] = useState(false)
   const [flytterId, setFlytterId] = useState<string | null>(null)
   const router = useRouter()
+  const { t, language } = useLanguage()
 
   const todayColumn = useMemo(() => getTodayColumn(), [])
   const sensors = useSensors(
@@ -208,12 +259,8 @@ export default function OppgavePage() {
       },
     })
   )
-  const t = translations[lang]
 
   useEffect(() => {
-    const savedLang = localStorage.getItem("lang") as "no" | "en" | "es" | null
-    setLang(savedLang || "no")
-
     const selectedEmployeeId = localStorage.getItem("selectedEmployeeId")
     const selectedEmployeeRole = localStorage.getItem("selectedEmployeeRole")
     const taskListId = localStorage.getItem("selectedTaskListId")
@@ -233,14 +280,30 @@ export default function OppgavePage() {
     }
 
     if (!taskListId) {
-      setFeil("Ingen oppgavetype valgt")
+      setFeil(t("noTaskTypeSelected"))
       return
     }
 
     setSelectedTaskListId(taskListId)
     setHideFor6Hours(taskListHideFor6Hours)
     loadTasks(taskListId, taskListName || "", taskListHideFor6Hours)
-  }, [router, todayColumn])
+  }, [router, todayColumn, t])
+
+  function getTranslatedListName(name: string) {
+    if (isOpeningList(name)) {
+      return t("opening")
+    }
+
+    if (isOtherTasksList(name)) {
+      return t("otherTasks")
+    }
+
+    if (isClosingList(name)) {
+      return t("closing")
+    }
+
+    return name
+  }
 
   async function loadTasks(
     taskListId: string,
@@ -255,12 +318,12 @@ export default function OppgavePage() {
 
       let query =
         `${url}/rest/v1/tasks?` +
-        `select=id,name,active,sort_order,image_url,requires_photo,show_monday,show_tuesday,show_wednesday,show_thursday,show_friday,show_saturday,show_sunday` +
+        `select=id,name,name_no,name_en,name_es,active,sort_order,image_url,requires_photo,show_monday,show_tuesday,show_wednesday,show_thursday,show_friday,show_saturday,show_sunday` +
         `&list_id=eq.${taskListId}` +
         `&active=eq.true` +
         `&order=sort_order.asc,name.asc`
 
-      if (taskListName === "Åpning" || taskListName === "Stenging") {
+      if (isOpeningList(taskListName) || isClosingList(taskListName)) {
         query += `&${todayColumn}=eq.true`
       }
 
@@ -274,7 +337,7 @@ export default function OppgavePage() {
       const data = await res.json()
 
       if (!res.ok) {
-        setFeil(data.message || "Kunne ikke hente oppgaver")
+        setFeil(data.message || t("couldNotFetchTasks"))
         return
       }
 
@@ -304,7 +367,7 @@ export default function OppgavePage() {
       const logsData = await logsRes.json()
 
       if (!logsRes.ok) {
-        setFeil(logsData.message || "Kunne ikke hente nylige logger")
+        setFeil(logsData.message || t("couldNotFetchRecentLogs"))
         return
       }
 
@@ -318,13 +381,15 @@ export default function OppgavePage() {
       const visibleTasks = allTasks.filter((task) => !hiddenTaskIds.has(task.id))
       setTasks(visibleTasks)
     } catch (err) {
-      setFeil(`Fetch-feil: ${String(err)}`)
+      setFeil(`${t("fetchError")}: ${String(err)}`)
     }
   }
 
   function velgOppgave(task: Task) {
+    const displayName = getTaskDisplayName(task, language)
+
     localStorage.setItem("selectedTaskId", task.id)
-    localStorage.setItem("selectedTaskName", task.name)
+    localStorage.setItem("selectedTaskName", displayName)
     localStorage.setItem(
       "selectedTaskRequiresPhoto",
       task.requires_photo ? "true" : "false"
@@ -366,13 +431,13 @@ export default function OppgavePage() {
 
       if (!res.ok) {
         const data = await res.text()
-        throw new Error(data || "Kunne ikke slette oppgave")
+        throw new Error(data || t("couldNotDeleteTask"))
       }
 
       setTasks((prev) => prev.filter((item) => item.id !== task.id))
-      setStatus(`Oppgaven "${task.name}" ble slettet`)
+      setStatus(`${t("taskDeleted")}: "${getTaskDisplayName(task, language)}"`)
     } catch (err) {
-      setFeil(`Feil ved sletting: ${String(err)}`)
+      setFeil(`${t("deleteError")}: ${String(err)}`)
     }
   }
 
@@ -397,7 +462,7 @@ export default function OppgavePage() {
 
       if (!res.ok) {
         const data = await res.text()
-        throw new Error(data || "Kunne ikke lagre rekkefølge")
+        throw new Error(data || t("couldNotSaveOrder"))
       }
     }
   }
@@ -425,9 +490,9 @@ export default function OppgavePage() {
       setFlytterId(String(active.id))
 
       await saveSortOrder(movedTasks)
-      setStatus(`Rekkefølgen for "${listeNavn}" er lagret`)
+      setStatus(`${t("orderSavedFor")}: "${getTranslatedListName(listeNavn)}"`)
     } catch (err) {
-      setFeil(`Feil: ${String(err)}`)
+      setFeil(`${t("error")}: ${String(err)}`)
       if (selectedTaskListId) {
         loadTasks(selectedTaskListId, listeNavn, hideFor6Hours)
       }
@@ -445,31 +510,29 @@ export default function OppgavePage() {
     router.push("/oppgavevalg")
   }
 
+  const translatedListName = getTranslatedListName(listeNavn)
+  const isOpeningOrClosing =
+    isOpeningList(listeNavn) || isClosingList(listeNavn)
+
   return (
     <main style={{ padding: 40 }}>
-      <h1>{t.selectTask}</h1>
+      <h1>{t("selectTask")}</h1>
 
       {listeNavn && (
         <p>
-          {t.list}: {listeNavn}
+          {t("list")}: {translatedListName}
         </p>
       )}
 
       {isLeader && (
-        <p style={{ color: "#666", marginTop: 8 }}>
-          Admin: bruk "Dra" for å endre rekkefølge eller "Slett" for å fjerne oppgaven.
-        </p>
+        <p style={{ color: "#666", marginTop: 8 }}>{t("adminTaskHelp")}</p>
       )}
 
       {status && <p style={{ color: "green" }}>{status}</p>}
       {feil && <p style={{ color: "red" }}>{feil}</p>}
 
       {tasks.length === 0 && !feil && (
-        <p>
-          {listeNavn === "Åpning" || listeNavn === "Stenging"
-            ? t.noTasksToday
-            : t.noTasksFound}
-        </p>
+        <p>{isOpeningOrClosing ? t("noTasksToday") : t("noTasksFound")}</p>
       )}
 
       {!isLeader &&
@@ -491,7 +554,7 @@ export default function OppgavePage() {
               color: "#000",
             }}
           >
-            {task.name}
+            {getTaskDisplayName(task, language)}
           </button>
         ))}
 
@@ -520,6 +583,10 @@ export default function OppgavePage() {
                   flytterId={flytterId}
                   onOpen={velgOppgave}
                   onDelete={slettOppgave}
+                  deleteLabel={t("delete")}
+                  dragLabel={t("drag")}
+                  movingLabel={t("moving")}
+                  displayName={getTaskDisplayName(task, language)}
                 />
               ))}
             </div>
@@ -540,7 +607,7 @@ export default function OppgavePage() {
           color: "#000",
         }}
       >
-        {t.back}
+        {t("back")}
       </button>
     </main>
   )

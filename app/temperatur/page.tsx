@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useLanguage } from "@/lib/language"
 import {
   DndContext,
   PointerSensor,
@@ -28,14 +29,79 @@ type TemperatureUnit = {
   image_url?: string | null
 }
 
+type UiLanguage = "no" | "en" | "es"
+
+const temperaturePageTexts: Record<
+  UiLanguage,
+  {
+    moving: string
+    drag: string
+    couldNotFetchUnits: string
+    fetchError: string
+    couldNotSaveOrder: string
+    orderSaved: string
+    error: string
+    title: string
+    adminHelp: string
+    noUnitsFound: string
+    back: string
+  }
+> = {
+  no: {
+    moving: "Flytter...",
+    drag: "Dra",
+    couldNotFetchUnits: "Kunne ikke hente enheter",
+    fetchError: "Fetch-feil",
+    couldNotSaveOrder: "Kunne ikke lagre rekkefølge",
+    orderSaved: "Rekkefølgen er lagret",
+    error: "Feil",
+    title: "Temperaturkontroll",
+    adminHelp: 'Admin: bruk "Dra"-knappen oppe til høyre for å endre rekkefølge.',
+    noUnitsFound: "Ingen enheter funnet",
+    back: "Tilbake",
+  },
+  en: {
+    moving: "Moving...",
+    drag: "Drag",
+    couldNotFetchUnits: "Could not fetch units",
+    fetchError: "Fetch error",
+    couldNotSaveOrder: "Could not save order",
+    orderSaved: "Order saved",
+    error: "Error",
+    title: "Temperature control",
+    adminHelp: 'Admin: use the "Drag" button in the top right to change the order.',
+    noUnitsFound: "No units found",
+    back: "Back",
+  },
+  es: {
+    moving: "Moviendo...",
+    drag: "Arrastrar",
+    couldNotFetchUnits: "No se pudieron obtener las unidades",
+    fetchError: "Error de carga",
+    couldNotSaveOrder: "No se pudo guardar el orden",
+    orderSaved: "Orden guardado",
+    error: "Error",
+    title: "Control de temperatura",
+    adminHelp:
+      'Admin: usa el botón "Arrastrar" arriba a la derecha para cambiar el orden.',
+    noUnitsFound: "No se encontraron unidades",
+    back: "Volver",
+  },
+}
+
 function SortableUnitCard({
   unit,
   flytterId,
   onOpen,
+  text,
 }: {
   unit: TemperatureUnit
   flytterId: string | null
   onOpen: (unit: TemperatureUnit) => void
+  text: {
+    moving: string
+    drag: string
+  }
 }) {
   const {
     attributes,
@@ -83,7 +149,7 @@ function SortableUnitCard({
               flexShrink: 0,
             }}
           >
-            {flytterId === unit.id ? "Flytter..." : "Dra"}
+            {flytterId === unit.id ? text.moving : text.drag}
           </button>
         </div>
       </div>
@@ -93,6 +159,11 @@ function SortableUnitCard({
 
 export default function TemperaturPage() {
   const router = useRouter()
+  const { language } = useLanguage()
+  const currentLanguage: UiLanguage =
+    language === "en" || language === "es" ? language : "no"
+  const text = temperaturePageTexts[currentLanguage]
+
   const [units, setUnits] = useState<TemperatureUnit[]>([])
   const [feil, setFeil] = useState("")
   const [status, setStatus] = useState("")
@@ -150,13 +221,13 @@ export default function TemperaturPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        setFeil(data.message || "Kunne ikke hente enheter")
+        setFeil(data.message || text.couldNotFetchUnits)
         return
       }
 
       setUnits(data)
     } catch (err) {
-      setFeil(`Fetch-feil: ${String(err)}`)
+      setFeil(`${text.fetchError}: ${String(err)}`)
     }
   }
 
@@ -197,7 +268,7 @@ export default function TemperaturPage() {
 
       if (!res.ok) {
         const data = await res.text()
-        throw new Error(data || "Kunne ikke lagre rekkefølge")
+        throw new Error(data || text.couldNotSaveOrder)
       }
     }
   }
@@ -225,9 +296,9 @@ export default function TemperaturPage() {
       setFlytterId(String(active.id))
 
       await saveSortOrder(movedUnits)
-      setStatus("Rekkefølgen er lagret")
+      setStatus(text.orderSaved)
     } catch (err) {
-      setFeil(`Feil: ${String(err)}`)
+      setFeil(`${text.error}: ${String(err)}`)
       if (selectedVenue) {
         loadUnits(selectedVenue)
       }
@@ -238,16 +309,10 @@ export default function TemperaturPage() {
 
   return (
     <main className="min-h-screen bg-black p-6 text-white">
-      <h1 className="mb-10 text-center text-3xl font-bold">
-        Temperaturkontroll
-      </h1>
+      <h1 className="mb-10 text-center text-3xl font-bold">{text.title}</h1>
 
       <div className="mx-auto flex max-w-md flex-col gap-4">
-        {isLeader && (
-          <p className="text-sm text-zinc-400">
-            Admin: bruk "Dra"-knappen oppe til høyre for å endre rekkefølge.
-          </p>
-        )}
+        {isLeader && <p className="text-sm text-zinc-400">{text.adminHelp}</p>}
 
         {status && <p className="text-green-400">{status}</p>}
         {feil && <p className="text-red-400">{feil}</p>}
@@ -280,6 +345,7 @@ export default function TemperaturPage() {
                     unit={unit}
                     flytterId={flytterId}
                     onOpen={velgEnhet}
+                    text={text}
                   />
                 ))}
               </div>
@@ -288,14 +354,14 @@ export default function TemperaturPage() {
         )}
 
         {units.length === 0 && !feil && (
-          <p className="text-center text-zinc-400">Ingen enheter funnet</p>
+          <p className="text-center text-zinc-400">{text.noUnitsFound}</p>
         )}
 
         <button
           onClick={() => router.push("/")}
           className="mt-6 w-full rounded-xl border border-zinc-600 py-3 text-zinc-300"
         >
-          Tilbake
+          {text.back}
         </button>
       </div>
     </main>

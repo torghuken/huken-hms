@@ -2,9 +2,61 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useLanguage } from "@/lib/language"
+
+type UiLanguage = "no" | "en" | "es"
+
+const confirmTexts: Record<
+  UiLanguage,
+  {
+    employee: string
+    missingNameOrTask: string
+    saving: string
+    done: string
+    couldNotSave: string
+    error: string
+    taskExampleImage: string
+    confirm: string
+  }
+> = {
+  no: {
+    employee: "Ansatt",
+    missingNameOrTask: "Mangler navn eller oppgave",
+    saving: "Lagrer...",
+    done: "Gjort",
+    couldNotSave: "Kunne ikke lagre",
+    error: "Feil",
+    taskExampleImage: "Eksempel på oppgaven",
+    confirm: "Bekreft",
+  },
+  en: {
+    employee: "Employee",
+    missingNameOrTask: "Missing name or task",
+    saving: "Saving...",
+    done: "Done",
+    couldNotSave: "Could not save",
+    error: "Error",
+    taskExampleImage: "Task example image",
+    confirm: "Confirm",
+  },
+  es: {
+    employee: "Empleado",
+    missingNameOrTask: "Falta nombre o tarea",
+    saving: "Guardando...",
+    done: "Hecho",
+    couldNotSave: "No se pudo guardar",
+    error: "Error",
+    taskExampleImage: "Imagen de ejemplo de la tarea",
+    confirm: "Confirmar",
+  },
+}
 
 export default function BekreftPage() {
   const router = useRouter()
+  const { language } = useLanguage()
+  const currentLanguage: UiLanguage =
+    language === "en" || language === "es" ? language : "no"
+  const text = confirmTexts[currentLanguage]
 
   const [ansatt, setAnsatt] = useState("")
   const [oppgave, setOppgave] = useState("")
@@ -24,7 +76,7 @@ export default function BekreftPage() {
 
   async function lagreBekreftelse() {
     if (!employeeId || !taskId) {
-      setStatus("Mangler navn eller oppgave")
+      setStatus(text.missingNameOrTask)
       return
     }
 
@@ -34,7 +86,7 @@ export default function BekreftPage() {
     try {
       setFlash(true)
       setTimeout(() => setFlash(false), 120)
-      setStatus("Lagrer...")
+      setStatus(text.saving)
 
       const logRes = await fetch(`${url}/rest/v1/logs`, {
         method: "POST",
@@ -47,14 +99,14 @@ export default function BekreftPage() {
         body: JSON.stringify({
           employee_id: employeeId,
           task_id: taskId,
-          comment: "Gjort",
+          comment: text.done,
           image_url: null,
         }),
       })
 
       if (!logRes.ok) {
         const errorText = await logRes.text()
-        setStatus(`Kunne ikke lagre: ${errorText}`)
+        setStatus(`${text.couldNotSave}: ${errorText}`)
         return
       }
 
@@ -65,7 +117,7 @@ export default function BekreftPage() {
 
       router.replace("/oppgave")
     } catch (err) {
-      setStatus(`Feil: ${String(err)}`)
+      setStatus(`${text.error}: ${String(err)}`)
     }
   }
 
@@ -78,7 +130,9 @@ export default function BekreftPage() {
       />
 
       <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/70 to-transparent p-5">
-        <p className="text-sm opacity-80">Ansatt: {ansatt}</p>
+        <p className="text-sm opacity-80">
+          {text.employee}: {ansatt}
+        </p>
         <p className="text-2xl font-semibold">{oppgave}</p>
       </div>
 
@@ -86,7 +140,7 @@ export default function BekreftPage() {
         {oppgaveBilde && (
           <img
             src={oppgaveBilde}
-            alt="Eksempel på oppgaven"
+            alt={text.taskExampleImage}
             className="mb-8 max-h-[50vh] rounded-2xl border border-white/20"
           />
         )}
@@ -96,6 +150,7 @@ export default function BekreftPage() {
         <div className="w-16" />
         <button
           onClick={lagreBekreftelse}
+          aria-label={text.confirm}
           className="h-20 w-20 rounded-full border-4 border-white bg-white/20 shadow-xl"
         />
         <div className="w-16" />

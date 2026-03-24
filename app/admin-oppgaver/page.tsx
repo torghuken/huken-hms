@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useLanguage } from "@/lib/language"
 import {
   DndContext,
   PointerSensor,
@@ -22,6 +23,9 @@ import { CSS } from "@dnd-kit/utilities"
 type Task = {
   id: string
   name: string
+  name_no?: string | null
+  name_en?: string | null
+  name_es?: string | null
   active: boolean
   sort_order: number | null
   list_id: string | null
@@ -56,6 +60,8 @@ type DaysState = {
   sunday: boolean
 }
 
+type UiLanguage = "no" | "en" | "es"
+
 const defaultDays: DaysState = {
   monday: true,
   tuesday: true,
@@ -66,16 +72,361 @@ const defaultDays: DaysState = {
   sunday: true,
 }
 
+const adminTaskTexts: Record<
+  UiLanguage,
+  {
+    title: string
+    addTask: string
+    taskNamePlaceholder: string
+    chooseTaskType: string
+    registrationMode: string
+    requiresPhoto: string
+    requiresConfirmation: string
+    visibleDays: string
+    allDays: string
+    reset: string
+    exampleImage: string
+    add: string
+    noTasksYet: string
+    delete: string
+    deleting: string
+    drag: string
+    moving: string
+    useDragToMove: string
+    back: string
+    mustWriteTaskName: string
+    mustChooseTaskType: string
+    mustChooseAtLeastOneDay: string
+    mustChooseExampleImage: string
+    savingTask: string
+    taskSaved: string
+    taskRemoved: string
+    couldNotFetchTaskTypes: string
+    couldNotFetchTasks: string
+    couldNotRemoveTask: string
+    couldNotUploadImage: string
+    couldNotAddTask: string
+    couldNotSaveOrder: string
+    orderSavedFor: string
+    fetchError: string
+    error: string
+    confirmDeleteStart: string
+    confirmDeleteEnd: string
+    allDaysLabel: string
+    dailyTasks: string
+    otherTasks: string
+    moreTasks: string
+    unknownCategory: string
+    monday: string
+    tuesday: string
+    wednesday: string
+    thursday: string
+    friday: string
+    saturday: string
+    sunday: string
+  }
+> = {
+  no: {
+    title: "Administrer oppgaver",
+    addTask: "Legg til oppgave",
+    taskNamePlaceholder: "Navn på oppgave",
+    chooseTaskType: "Velg oppgavetype",
+    registrationMode: "Hvordan skal oppgaven registreres?",
+    requiresPhoto: "Må ta bilde",
+    requiresConfirmation: "Må bekreftes",
+    visibleDays: "Vises på disse dagene",
+    allDays: "Alle dager",
+    reset: "Nullstill",
+    exampleImage: "Eksempelbilde",
+    add: "Legg til",
+    noTasksYet: "Ingen oppgaver enda",
+    delete: "Slett",
+    deleting: "Fjerner...",
+    drag: "Dra",
+    moving: "Flytter...",
+    useDragToMove: "Bruk Dra-knappen for å flytte",
+    back: "Tilbake",
+    mustWriteTaskName: "Skriv navn på oppgaven",
+    mustChooseTaskType: "Velg oppgavetype",
+    mustChooseAtLeastOneDay: "Velg minst én dag",
+    mustChooseExampleImage: "Velg eksempelbilde",
+    savingTask: "Lagrer oppgave...",
+    taskSaved: "Oppgaven er lagret",
+    taskRemoved: "Oppgaven er fjernet",
+    couldNotFetchTaskTypes: "Kunne ikke hente oppgavetyper",
+    couldNotFetchTasks: "Kunne ikke hente oppgaver",
+    couldNotRemoveTask: "Kunne ikke fjerne oppgave",
+    couldNotUploadImage: "Kunne ikke laste opp bilde",
+    couldNotAddTask: "Kunne ikke legge til oppgave",
+    couldNotSaveOrder: "Kunne ikke lagre rekkefølge",
+    orderSavedFor: "Rekkefølgen er lagret for",
+    fetchError: "Fetch-feil",
+    error: "Feil",
+    confirmDeleteStart: 'Er du sikker på at du vil fjerne oppgaven "',
+    confirmDeleteEnd: '"? Den blir satt som inaktiv.',
+    allDaysLabel: "Alle dager",
+    dailyTasks: "Daglige oppgaver",
+    otherTasks: "Andre oppgaver",
+    moreTasks: "Flere oppgaver",
+    unknownCategory: "Uten kategori",
+    monday: "Mandag",
+    tuesday: "Tirsdag",
+    wednesday: "Onsdag",
+    thursday: "Torsdag",
+    friday: "Fredag",
+    saturday: "Lørdag",
+    sunday: "Søndag",
+  },
+  en: {
+    title: "Manage tasks",
+    addTask: "Add task",
+    taskNamePlaceholder: "Task name",
+    chooseTaskType: "Choose task type",
+    registrationMode: "How should the task be registered?",
+    requiresPhoto: "Photo required",
+    requiresConfirmation: "Confirmation required",
+    visibleDays: "Visible on these days",
+    allDays: "Every day",
+    reset: "Reset",
+    exampleImage: "Example image",
+    add: "Add",
+    noTasksYet: "No tasks yet",
+    delete: "Delete",
+    deleting: "Removing...",
+    drag: "Drag",
+    moving: "Moving...",
+    useDragToMove: "Use the Drag button to move",
+    back: "Back",
+    mustWriteTaskName: "Enter task name",
+    mustChooseTaskType: "Choose task type",
+    mustChooseAtLeastOneDay: "Choose at least one day",
+    mustChooseExampleImage: "Choose an example image",
+    savingTask: "Saving task...",
+    taskSaved: "Task saved",
+    taskRemoved: "Task removed",
+    couldNotFetchTaskTypes: "Could not fetch task types",
+    couldNotFetchTasks: "Could not fetch tasks",
+    couldNotRemoveTask: "Could not remove task",
+    couldNotUploadImage: "Could not upload image",
+    couldNotAddTask: "Could not add task",
+    couldNotSaveOrder: "Could not save order",
+    orderSavedFor: "Order saved for",
+    fetchError: "Fetch error",
+    error: "Error",
+    confirmDeleteStart: 'Are you sure you want to remove the task "',
+    confirmDeleteEnd: '"? It will be set as inactive.',
+    allDaysLabel: "Every day",
+    dailyTasks: "Daily tasks",
+    otherTasks: "Other tasks",
+    moreTasks: "More tasks",
+    unknownCategory: "Uncategorized",
+    monday: "Monday",
+    tuesday: "Tuesday",
+    wednesday: "Wednesday",
+    thursday: "Thursday",
+    friday: "Friday",
+    saturday: "Saturday",
+    sunday: "Sunday",
+  },
+  es: {
+    title: "Administrar tareas",
+    addTask: "Agregar tarea",
+    taskNamePlaceholder: "Nombre de la tarea",
+    chooseTaskType: "Elegir tipo de tarea",
+    registrationMode: "¿Cómo debe registrarse la tarea?",
+    requiresPhoto: "Requiere foto",
+    requiresConfirmation: "Requiere confirmación",
+    visibleDays: "Visible en estos días",
+    allDays: "Todos los días",
+    reset: "Restablecer",
+    exampleImage: "Imagen de ejemplo",
+    add: "Agregar",
+    noTasksYet: "No hay tareas todavía",
+    delete: "Eliminar",
+    deleting: "Eliminando...",
+    drag: "Arrastrar",
+    moving: "Moviendo...",
+    useDragToMove: "Usa el botón Arrastrar para mover",
+    back: "Volver",
+    mustWriteTaskName: "Escribe el nombre de la tarea",
+    mustChooseTaskType: "Elige el tipo de tarea",
+    mustChooseAtLeastOneDay: "Elige al menos un día",
+    mustChooseExampleImage: "Elige una imagen de ejemplo",
+    savingTask: "Guardando tarea...",
+    taskSaved: "Tarea guardada",
+    taskRemoved: "La tarea fue eliminada",
+    couldNotFetchTaskTypes: "No se pudieron obtener los tipos de tarea",
+    couldNotFetchTasks: "No se pudieron obtener las tareas",
+    couldNotRemoveTask: "No se pudo eliminar la tarea",
+    couldNotUploadImage: "No se pudo subir la imagen",
+    couldNotAddTask: "No se pudo agregar la tarea",
+    couldNotSaveOrder: "No se pudo guardar el orden",
+    orderSavedFor: "Orden guardado para",
+    fetchError: "Error de carga",
+    error: "Error",
+    confirmDeleteStart: '¿Seguro que quieres eliminar la tarea "',
+    confirmDeleteEnd: '"? Se marcará como inactiva.',
+    allDaysLabel: "Todos los días",
+    dailyTasks: "Tareas diarias",
+    otherTasks: "Otras tareas",
+    moreTasks: "Más tareas",
+    unknownCategory: "Sin categoría",
+    monday: "Lunes",
+    tuesday: "Martes",
+    wednesday: "Miércoles",
+    thursday: "Jueves",
+    friday: "Viernes",
+    saturday: "Sábado",
+    sunday: "Domingo",
+  },
+}
+
+function normalizeText(text: string) {
+  return text.trim().toLowerCase()
+}
+
+function autoTranslateTaskName(input: string) {
+  const original = input.trim()
+  const normalized = normalizeText(original)
+
+  const exactMap: Record<string, { en: string; es: string }> = {
+    "fyll is": { en: "Refill ice", es: "Rellenar hielo" },
+    "skru på ovn": { en: "Turn on oven", es: "Encender horno" },
+    "skru av ovn": { en: "Turn off oven", es: "Apagar horno" },
+    "tøm søppel": { en: "Empty trash", es: "Vaciar basura" },
+    "vask gulv": { en: "Wash floor", es: "Lavar el suelo" },
+    "vask toalett": { en: "Clean toilet", es: "Limpiar el baño" },
+    "vask toaletter": { en: "Clean toilets", es: "Limpiar los baños" },
+    "fyll opp bar": { en: "Restock bar", es: "Reponer la barra" },
+    "fyll opp kjøleskap": { en: "Restock fridge", es: "Reponer la nevera" },
+    "fyll opp øl": { en: "Restock beer", es: "Reponer cerveza" },
+    "fyll opp vin": { en: "Restock wine", es: "Reponer vino" },
+    "fyll opp sprit": { en: "Restock spirits", es: "Reponer licores" },
+    "rydd bord": { en: "Clear tables", es: "Recoger las mesas" },
+    "tørk bord": { en: "Wipe tables", es: "Limpiar las mesas" },
+    "sett på lys": { en: "Turn on lights", es: "Encender luces" },
+    "slå av lys": { en: "Turn off lights", es: "Apagar luces" },
+    "lås dør": { en: "Lock door", es: "Cerrar con llave la puerta" },
+    "lås døra": { en: "Lock the door", es: "Cerrar con llave la puerta" },
+    "åpne dør": { en: "Open door", es: "Abrir puerta" },
+    "sjekk toaletter": { en: "Check toilets", es: "Revisar los baños" },
+    "sjekk bar": { en: "Check bar", es: "Revisar la barra" },
+    "sjekk kjøkken": { en: "Check kitchen", es: "Revisar la cocina" },
+    "sjekk nødutganger": {
+      en: "Check emergency exits",
+      es: "Revisar salidas de emergencia",
+    },
+    "fyll såpe": { en: "Refill soap", es: "Rellenar jabón" },
+    "fyll papir": { en: "Refill paper", es: "Rellenar papel" },
+    "fyll toalettpapir": {
+      en: "Refill toilet paper",
+      es: "Rellenar papel higiénico",
+    },
+    "tøm oppvaskmaskin": {
+      en: "Empty dishwasher",
+      es: "Vaciar lavavajillas",
+    },
+    "start oppvaskmaskin": {
+      en: "Start dishwasher",
+      es: "Encender lavavajillas",
+    },
+    "rydd lager": { en: "Tidy storage", es: "Ordenar almacén" },
+    "vask bar": { en: "Clean bar", es: "Limpiar la barra" },
+    "steng bar": { en: "Close bar", es: "Cerrar la barra" },
+    "åpne bar": { en: "Open bar", es: "Abrir la barra" },
+  }
+
+  if (exactMap[normalized]) {
+    return {
+      no: original,
+      en: exactMap[normalized].en,
+      es: exactMap[normalized].es,
+    }
+  }
+
+  const contains = (value: string) => normalized.includes(value)
+
+  if (contains("is")) {
+    return {
+      no: original,
+      en: original.replace(/is/gi, "ice"),
+      es: original.replace(/is/gi, "hielo"),
+    }
+  }
+
+  if (contains("ovn")) {
+    return {
+      no: original,
+      en: original.replace(/ovn/gi, "oven"),
+      es: original.replace(/ovn/gi, "horno"),
+    }
+  }
+
+  if (contains("toalett")) {
+    return {
+      no: original,
+      en: original.replace(/toalett(er)?/gi, "toilet$1"),
+      es: original.replace(/toalett(er)?/gi, "baño"),
+    }
+  }
+
+  if (contains("bar")) {
+    return {
+      no: original,
+      en: original,
+      es: original.replace(/bar/gi, "barra"),
+    }
+  }
+
+  return {
+    no: original,
+    en: original,
+    es: original,
+  }
+}
+
+function getTaskDisplayName(task: Task, language: UiLanguage) {
+  if (language === "en") return task.name_en || task.name_no || task.name
+  if (language === "es") return task.name_es || task.name_no || task.name
+  return task.name_no || task.name
+}
+
+function getTaskListDisplayName(name: string, text: Record<string, string>) {
+  const normalized = name.trim().toLowerCase()
+
+  if (
+    normalized === "daglige oppgaver" ||
+    normalized === "daily tasks" ||
+    normalized === "tareas diarias"
+  ) {
+    return text.dailyTasks
+  }
+
+  if (
+    normalized === "andre oppgaver" ||
+    normalized === "other tasks" ||
+    normalized === "otras tareas"
+  ) {
+    return text.otherTasks
+  }
+
+  return name
+}
+
 function SortableTaskCard({
   task,
   flytterId,
   sletterId,
   onDelete,
+  language,
+  text,
 }: {
   task: Task
   flytterId: string | null
   sletterId: string | null
   onDelete: (task: Task) => void
+  language: UiLanguage
+  text: Record<string, string>
 }) {
   const {
     attributes,
@@ -94,27 +445,28 @@ function SortableTaskCard({
 
   function formatDays(task: Task) {
     const activeDays: string[] = []
-    if (task.show_monday) activeDays.push("Mandag")
-    if (task.show_tuesday) activeDays.push("Tirsdag")
-    if (task.show_wednesday) activeDays.push("Onsdag")
-    if (task.show_thursday) activeDays.push("Torsdag")
-    if (task.show_friday) activeDays.push("Fredag")
-    if (task.show_saturday) activeDays.push("Lørdag")
-    if (task.show_sunday) activeDays.push("Søndag")
 
-    if (activeDays.length === 7) return "Alle dager"
+    if (task.show_monday) activeDays.push(text.monday)
+    if (task.show_tuesday) activeDays.push(text.tuesday)
+    if (task.show_wednesday) activeDays.push(text.wednesday)
+    if (task.show_thursday) activeDays.push(text.thursday)
+    if (task.show_friday) activeDays.push(text.friday)
+    if (task.show_saturday) activeDays.push(text.saturday)
+    if (task.show_sunday) activeDays.push(text.sunday)
+
+    if (activeDays.length === 7) return text.allDaysLabel
     return activeDays.join(" • ")
   }
+
+  const displayName = getTaskDisplayName(task, language)
 
   return (
     <div ref={setNodeRef} style={style}>
       <div className="rounded-xl bg-white p-4 text-black">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
-            <span className="font-medium">{task.name}</span>
-            <p className="mt-1 text-xs text-zinc-500">
-              Bruk Dra-knappen for å flytte
-            </p>
+            <span className="font-medium">{displayName}</span>
+            <p className="mt-1 text-xs text-zinc-500">{text.useDragToMove}</p>
           </div>
 
           <div className="flex flex-wrap justify-end gap-2">
@@ -128,7 +480,7 @@ function SortableTaskCard({
               disabled={flytterId === task.id || sletterId === task.id}
               className="rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
             >
-              {sletterId === task.id ? "Fjerner..." : "Slett"}
+              {sletterId === task.id ? text.deleting : text.delete}
             </button>
 
             <button
@@ -140,20 +492,20 @@ function SortableTaskCard({
               className="rounded-lg border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm font-semibold text-zinc-700"
               style={{ touchAction: "none", cursor: "grab" }}
             >
-              {flytterId === task.id ? "Flytter..." : "Dra"}
+              {flytterId === task.id ? text.moving : text.drag}
             </button>
           </div>
         </div>
 
         <p className="mt-2 text-sm text-zinc-600">{formatDays(task)}</p>
         <p className="mt-1 text-sm text-zinc-600">
-          {task.requires_photo ? "Må ta bilde" : "Må bekreftes"}
+          {task.requires_photo ? text.requiresPhoto : text.requiresConfirmation}
         </p>
 
         {task.image_url && (
           <img
             src={task.image_url}
-            alt="Oppgavebilde"
+            alt={text.exampleImage}
             className="mt-3 max-h-40 rounded-xl"
           />
         )}
@@ -164,6 +516,10 @@ function SortableTaskCard({
 
 export default function AdminOppgaverPage() {
   const router = useRouter()
+  const { language } = useLanguage()
+  const currentLanguage: UiLanguage =
+    language === "en" || language === "es" ? language : "no"
+  const text = adminTaskTexts[currentLanguage]
 
   const [tasks, setTasks] = useState<Task[]>([])
   const [taskLists, setTaskLists] = useState<TaskList[]>([])
@@ -242,21 +598,26 @@ export default function AdminOppgaverPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        setFeil(data.message || "Kunne ikke hente oppgavetyper")
+        setFeil(data.message || text.couldNotFetchTaskTypes)
         return
       }
 
       setTaskLists(data)
 
       if (data.length > 0 && !valgtListeId) {
-        const andre = data.find(
+        const preferred = data.find(
           (item: TaskList) =>
-            item.name === "Andre oppgaver" || item.name === "Daglige oppgaver"
+            item.name === "Andre oppgaver" ||
+            item.name === "Other tasks" ||
+            item.name === "Otras tareas" ||
+            item.name === "Daglige oppgaver" ||
+            item.name === "Daily tasks" ||
+            item.name === "Tareas diarias"
         )
-        setValgtListeId(andre ? andre.id : data[0].id)
+        setValgtListeId(preferred ? preferred.id : data[0].id)
       }
     } catch (err) {
-      setFeil(`Fetch-feil: ${String(err)}`)
+      setFeil(`${text.fetchError}: ${String(err)}`)
     }
   }
 
@@ -268,7 +629,7 @@ export default function AdminOppgaverPage() {
       setFeil("")
 
       const res = await fetch(
-        `${url}/rest/v1/tasks?select=id,name,active,sort_order,list_id,image_url,requires_photo,show_monday,show_tuesday,show_wednesday,show_thursday,show_friday,show_saturday,show_sunday,task_lists!inner(id,name,venue_id)&task_lists.venue_id=eq.${selectedVenue}&order=list_id.asc,sort_order.asc,name.asc`,
+        `${url}/rest/v1/tasks?select=id,name,name_no,name_en,name_es,active,sort_order,list_id,image_url,requires_photo,show_monday,show_tuesday,show_wednesday,show_thursday,show_friday,show_saturday,show_sunday,task_lists!inner(id,name,venue_id)&task_lists.venue_id=eq.${selectedVenue}&order=list_id.asc,sort_order.asc,name.asc`,
         {
           headers: {
             apikey: key,
@@ -280,19 +641,21 @@ export default function AdminOppgaverPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        setFeil(data.message || "Kunne ikke hente oppgaver")
+        setFeil(data.message || text.couldNotFetchTasks)
         return
       }
 
       setTasks(data)
     } catch (err) {
-      setFeil(`Fetch-feil: ${String(err)}`)
+      setFeil(`${text.fetchError}: ${String(err)}`)
     }
   }
 
   async function deleteTask(task: Task) {
+    const displayName = getTaskDisplayName(task, currentLanguage)
+
     const confirmed = window.confirm(
-      `Er du sikker på at du vil fjerne oppgaven "${task.name}"? Den blir satt som inaktiv.`
+      `${text.confirmDeleteStart}${displayName}${text.confirmDeleteEnd}`
     )
 
     if (!confirmed) return
@@ -321,14 +684,14 @@ export default function AdminOppgaverPage() {
 
       if (!res.ok) {
         const data = await res.text()
-        setFeil(data || "Kunne ikke fjerne oppgave")
+        setFeil(data || text.couldNotRemoveTask)
         return
       }
 
       setTasks((prev) => prev.filter((item) => item.id !== task.id))
-      setStatus(`Oppgaven "${task.name}" er fjernet`)
+      setStatus(`${text.taskRemoved}: "${displayName}"`)
     } catch (err) {
-      setFeil(`Fetch-feil: ${String(err)}`)
+      setFeil(`${text.fetchError}: ${String(err)}`)
     } finally {
       setSletterId(null)
       if (selectedVenue) {
@@ -388,8 +751,8 @@ export default function AdminOppgaverPage() {
     })
 
     if (!res.ok) {
-      const text = await res.text()
-      throw new Error(text || "Kunne ikke laste opp bilde")
+      const responseText = await res.text()
+      throw new Error(responseText || text.couldNotUploadImage)
     }
 
     return `${url}/storage/v1/object/public/hms-images/${filename}`
@@ -410,37 +773,38 @@ export default function AdminOppgaverPage() {
     const selectedVenue = localStorage.getItem("selectedVenue")
 
     if (!selectedVenue) {
-      setFeil("Fant ikke valgt sted")
+      setFeil(text.error)
       return
     }
 
     if (!nyOppgave.trim()) {
-      setFeil("Skriv navn på oppgaven")
+      setFeil(text.mustWriteTaskName)
       return
     }
 
     if (!valgtListeId) {
-      setFeil("Velg oppgavetype")
+      setFeil(text.mustChooseTaskType)
       return
     }
 
     if (!Object.values(days).some(Boolean)) {
-      setFeil("Velg minst én dag")
+      setFeil(text.mustChooseAtLeastOneDay)
       return
     }
 
     if (!imageFile) {
-      setFeil("Velg eksempelbilde")
+      setFeil(text.mustChooseExampleImage)
       return
     }
 
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     const nesteSortOrder = getNextSortOrderForList(valgtListeId)
+    const translated = autoTranslateTaskName(nyOppgave.trim())
 
     try {
       setFeil("")
-      setStatus("Lagrer oppgave...")
+      setStatus(text.savingTask)
 
       const imageUrl = await uploadImageIfNeeded()
 
@@ -453,7 +817,10 @@ export default function AdminOppgaverPage() {
           Prefer: "return=representation",
         },
         body: JSON.stringify({
-          name: nyOppgave.trim(),
+          name: translated.no,
+          name_no: translated.no,
+          name_en: translated.en,
+          name_es: translated.es,
           list_id: valgtListeId,
           active: true,
           sort_order: nesteSortOrder,
@@ -470,8 +837,8 @@ export default function AdminOppgaverPage() {
       })
 
       if (!res.ok) {
-        const data = await res.text()
-        setFeil(data || "Kunne ikke legge til oppgave")
+        const responseText = await res.text()
+        setFeil(responseText || text.couldNotAddTask)
         setStatus("")
         return
       }
@@ -482,12 +849,12 @@ export default function AdminOppgaverPage() {
       setImageFile(null)
       if (previewUrl) URL.revokeObjectURL(previewUrl)
       setPreviewUrl(null)
-      setStatus("Oppgaven er lagret")
+      setStatus(text.taskSaved)
 
       loadTasks(selectedVenue)
       loadTaskLists(selectedVenue)
     } catch (err) {
-      setFeil(`Feil: ${String(err)}`)
+      setFeil(`${text.error}: ${String(err)}`)
       setStatus("")
     }
   }
@@ -499,7 +866,9 @@ export default function AdminOppgaverPage() {
         const aOrder = Number(a.sort_order ?? 0)
         const bOrder = Number(b.sort_order ?? 0)
         if (aOrder !== bOrder) return aOrder - bOrder
-        return a.name.localeCompare(b.name)
+        return getTaskDisplayName(a, currentLanguage).localeCompare(
+          getTaskDisplayName(b, currentLanguage)
+        )
       })
   }
 
@@ -523,16 +892,13 @@ export default function AdminOppgaverPage() {
       })
 
       if (!res.ok) {
-        const data = await res.text()
-        throw new Error(data || "Kunne ikke lagre rekkefølge")
+        const responseText = await res.text()
+        throw new Error(responseText || text.couldNotSaveOrder)
       }
     }
   }
 
-  async function handleDragEndForList(
-    listName: string,
-    event: DragEndEvent
-  ) {
+  async function handleDragEndForList(listName: string, event: DragEndEvent) {
     const { active, over } = event
 
     if (!over || active.id === over.id) return
@@ -562,9 +928,11 @@ export default function AdminOppgaverPage() {
       setFlytterId(String(active.id))
 
       await saveSortOrderForList(updatedMovedList)
-      setStatus(`Rekkefølgen for "${listName}" er lagret`)
+      setStatus(
+        `${text.orderSavedFor} "${getTaskListDisplayName(listName, text)}"`
+      )
     } catch (err) {
-      setFeil(`Feil: ${String(err)}`)
+      setFeil(`${text.error}: ${String(err)}`)
       const selectedVenue = localStorage.getItem("selectedVenue")
       if (selectedVenue) {
         loadTasks(selectedVenue)
@@ -576,6 +944,7 @@ export default function AdminOppgaverPage() {
 
   const dagligeOppgaver = getTasksForList("Daglige oppgaver")
   const andreOppgaver = getTasksForList("Andre oppgaver")
+
   const andreListerOppgaver = tasks
     .filter(
       (task) =>
@@ -586,17 +955,24 @@ export default function AdminOppgaverPage() {
     .sort((a, b) => {
       const aOrder = Number(a.sort_order ?? 0)
       const bOrder = Number(b.sort_order ?? 0)
+
       if (a.task_lists?.name !== b.task_lists?.name) {
         return (a.task_lists?.name || "").localeCompare(b.task_lists?.name || "")
       }
+
       if (aOrder !== bOrder) return aOrder - bOrder
-      return a.name.localeCompare(b.name)
+
+      return getTaskDisplayName(a, currentLanguage).localeCompare(
+        getTaskDisplayName(b, currentLanguage)
+      )
     })
 
   function renderSortableSection(title: string, sectionTasks: Task[]) {
     return (
       <div>
-        <h2 className="mb-3 text-xl font-semibold">{title}</h2>
+        <h2 className="mb-3 text-xl font-semibold">
+          {getTaskListDisplayName(title, text)}
+        </h2>
 
         <DndContext
           sensors={sensors}
@@ -610,7 +986,7 @@ export default function AdminOppgaverPage() {
             <div className="space-y-3">
               {sectionTasks.length === 0 && (
                 <div className="rounded-xl bg-zinc-900 p-4 text-zinc-300">
-                  Ingen oppgaver enda
+                  {text.noTasksYet}
                 </div>
               )}
 
@@ -621,6 +997,8 @@ export default function AdminOppgaverPage() {
                   flytterId={flytterId}
                   sletterId={sletterId}
                   onDelete={deleteTask}
+                  language={currentLanguage}
+                  text={text}
                 />
               ))}
             </div>
@@ -632,20 +1010,20 @@ export default function AdminOppgaverPage() {
 
   return (
     <main className="min-h-screen bg-black p-6 text-white">
-      <h1 className="mb-8 text-center text-3xl font-bold">Administrer oppgaver</h1>
+      <h1 className="mb-8 text-center text-3xl font-bold">{text.title}</h1>
 
       <div className="mx-auto max-w-md space-y-8">
         {feil && <p className="text-red-400">{feil}</p>}
         {status && <p className="text-green-400">{status}</p>}
 
         <div className="rounded-2xl bg-zinc-900 p-4">
-          <h2 className="mb-4 text-xl font-semibold">Legg til oppgave</h2>
+          <h2 className="mb-4 text-xl font-semibold">{text.addTask}</h2>
 
           <div className="space-y-3">
             <input
               value={nyOppgave}
               onChange={(e) => setNyOppgave(e.target.value)}
-              placeholder="Navn på oppgave"
+              placeholder={text.taskNamePlaceholder}
               className="w-full rounded-xl border border-zinc-700 bg-white p-3 text-black outline-none"
             />
 
@@ -654,16 +1032,16 @@ export default function AdminOppgaverPage() {
               onChange={(e) => setValgtListeId(e.target.value)}
               className="w-full rounded-xl border border-zinc-700 bg-white p-3 text-black outline-none"
             >
-              <option value="">Velg oppgavetype</option>
+              <option value="">{text.chooseTaskType}</option>
               {taskLists.map((list) => (
                 <option key={list.id} value={list.id}>
-                  {list.name}
+                  {getTaskListDisplayName(list.name, text)}
                 </option>
               ))}
             </select>
 
             <div className="rounded-xl bg-zinc-800 p-3">
-              <p className="mb-3 text-sm text-zinc-300">Hvordan skal oppgaven registreres?</p>
+              <p className="mb-3 text-sm text-zinc-300">{text.registrationMode}</p>
 
               <div className="flex gap-2">
                 <button
@@ -673,7 +1051,7 @@ export default function AdminOppgaverPage() {
                     requiresPhoto ? "bg-white text-black" : "bg-zinc-700 text-white"
                   }`}
                 >
-                  Må ta bilde
+                  {text.requiresPhoto}
                 </button>
 
                 <button
@@ -683,13 +1061,13 @@ export default function AdminOppgaverPage() {
                     !requiresPhoto ? "bg-white text-black" : "bg-zinc-700 text-white"
                   }`}
                 >
-                  Må bekreftes
+                  {text.requiresConfirmation}
                 </button>
               </div>
             </div>
 
             <div className="rounded-xl bg-zinc-800 p-3">
-              <p className="mb-3 text-sm text-zinc-300">Vises på disse dagene</p>
+              <p className="mb-3 text-sm text-zinc-300">{text.visibleDays}</p>
 
               <div className="mb-3 flex flex-wrap gap-2">
                 <button
@@ -699,7 +1077,7 @@ export default function AdminOppgaverPage() {
                     alleDagerValgt ? "bg-white text-black" : "bg-zinc-700 text-white"
                   }`}
                 >
-                  Alle dager
+                  {text.allDays}
                 </button>
 
                 <button
@@ -707,19 +1085,19 @@ export default function AdminOppgaverPage() {
                   onClick={() => setAlleDager(false)}
                   className="rounded-lg bg-zinc-700 px-3 py-2 text-sm font-semibold text-white"
                 >
-                  Nullstill
+                  {text.reset}
                 </button>
               </div>
 
               <div className="flex flex-wrap gap-2">
                 {[
-                  ["monday", "Mandag"],
-                  ["tuesday", "Tirsdag"],
-                  ["wednesday", "Onsdag"],
-                  ["thursday", "Torsdag"],
-                  ["friday", "Fredag"],
-                  ["saturday", "Lørdag"],
-                  ["sunday", "Søndag"],
+                  ["monday", text.monday],
+                  ["tuesday", text.tuesday],
+                  ["wednesday", text.wednesday],
+                  ["thursday", text.thursday],
+                  ["friday", text.friday],
+                  ["saturday", text.saturday],
+                  ["sunday", text.sunday],
                 ].map(([key, label]) => {
                   const dayKey = key as keyof DaysState
                   const active = days[dayKey]
@@ -741,7 +1119,7 @@ export default function AdminOppgaverPage() {
             </div>
 
             <div className="rounded-xl bg-zinc-800 p-3">
-              <p className="mb-3 text-sm text-zinc-300">Eksempelbilde</p>
+              <p className="mb-3 text-sm text-zinc-300">{text.exampleImage}</p>
 
               <input
                 type="file"
@@ -753,7 +1131,7 @@ export default function AdminOppgaverPage() {
               {previewUrl && (
                 <img
                   src={previewUrl}
-                  alt="Forhåndsvisning"
+                  alt={text.exampleImage}
                   className="mt-3 max-h-48 rounded-xl"
                 />
               )}
@@ -764,7 +1142,7 @@ export default function AdminOppgaverPage() {
               onClick={leggTilOppgave}
               className="w-full rounded-xl bg-white px-4 py-3 text-lg font-semibold text-black"
             >
-              Legg til
+              {text.add}
             </button>
           </div>
         </div>
@@ -774,18 +1152,18 @@ export default function AdminOppgaverPage() {
 
         {andreListerOppgaver.length > 0 && (
           <div>
-            <h2 className="mb-3 text-xl font-semibold">Flere oppgaver</h2>
+            <h2 className="mb-3 text-xl font-semibold">{text.moreTasks}</h2>
 
             <div className="space-y-6">
               {Array.from(
                 new Set(
                   andreListerOppgaver.map(
-                    (task) => task.task_lists?.name || "Uten kategori"
+                    (task) => task.task_lists?.name || text.unknownCategory
                   )
                 )
               ).map((listName) => {
                 const sectionTasks = andreListerOppgaver.filter(
-                  (task) => (task.task_lists?.name || "Uten kategori") === listName
+                  (task) => (task.task_lists?.name || text.unknownCategory) === listName
                 )
 
                 return (
@@ -803,7 +1181,7 @@ export default function AdminOppgaverPage() {
           onClick={() => router.push("/")}
           className="w-full rounded-xl border border-zinc-600 px-4 py-3 text-zinc-200"
         >
-          Tilbake
+          {text.back}
         </button>
       </div>
     </main>

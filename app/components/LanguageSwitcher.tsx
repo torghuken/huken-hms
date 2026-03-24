@@ -1,10 +1,9 @@
 "use client"
 
+import { useLanguage } from "@/lib/language"
+
 export default function LanguageSwitcher() {
-  function setLang(lang: string) {
-    localStorage.setItem("lang", lang)
-    window.location.reload()
-  }
+  const { setLanguage } = useLanguage()
 
   return (
     <div
@@ -17,7 +16,7 @@ export default function LanguageSwitcher() {
       }}
     >
       <button
-        onClick={() => setLang("no")}
+        onClick={() => setLanguage("no")}
         style={{
           padding: "8px 14px",
           borderRadius: "10px",
@@ -31,7 +30,7 @@ export default function LanguageSwitcher() {
       </button>
 
       <button
-        onClick={() => setLang("en")}
+        onClick={() => setLanguage("en")}
         style={{
           padding: "8px 14px",
           borderRadius: "10px",
@@ -45,7 +44,7 @@ export default function LanguageSwitcher() {
       </button>
 
       <button
-        onClick={() => setLang("es")}
+        onClick={() => setLanguage("es")}
         style={{
           padding: "8px 14px",
           borderRadius: "10px",

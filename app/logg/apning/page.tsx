@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useLanguage } from "@/lib/language"
 
 type LogItem = {
   id: string
@@ -14,6 +15,9 @@ type LogItem = {
   } | null
   tasks: {
     name: string
+    name_no?: string | null
+    name_en?: string | null
+    name_es?: string | null
   } | null
 }
 
@@ -22,8 +26,79 @@ type GroupedLogs = {
   items: LogItem[]
 }
 
+type UiLanguage = "no" | "en" | "es"
+
+const openingLogTexts: Record<
+  UiLanguage,
+  {
+    registrations: string
+    notFoundForVenue: string
+    logSuffix: string
+    unknownTask: string
+    unknown: string
+    registration: string
+    noRegistrationsFound: string
+  }
+> = {
+  no: {
+    registrations: "registreringer",
+    notFoundForVenue: "ikke funnet for valgt sted",
+    logSuffix: "logg",
+    unknownTask: "Ukjent oppgave",
+    unknown: "Ukjent",
+    registration: "Registrering",
+    noRegistrationsFound: "Ingen registreringer funnet",
+  },
+  en: {
+    registrations: "registrations",
+    notFoundForVenue: "not found for selected venue",
+    logSuffix: "log",
+    unknownTask: "Unknown task",
+    unknown: "Unknown",
+    registration: "Registration",
+    noRegistrationsFound: "No registrations found",
+  },
+  es: {
+    registrations: "registros",
+    notFoundForVenue: "no se encontró para el local seleccionado",
+    logSuffix: "registro",
+    unknownTask: "Tarea desconocida",
+    unknown: "Desconocido",
+    registration: "Registro",
+    noRegistrationsFound: "No se encontraron registros",
+  },
+}
+
+function normalizeListName(name: string) {
+  return name.trim().toLowerCase()
+}
+
+function isOpeningList(name: string) {
+  const normalized = normalizeListName(name)
+  return (
+    normalized === "åpning" ||
+    normalized === "opening" ||
+    normalized === "apertura"
+  )
+}
+
+function getTaskDisplayName(
+  task: LogItem["tasks"],
+  language: "no" | "en" | "es"
+) {
+  if (!task) return ""
+  if (language === "en") return task.name_en || task.name_no || task.name
+  if (language === "es") return task.name_es || task.name_no || task.name
+  return task.name_no || task.name
+}
+
 export default function ApningLoggPage() {
   const router = useRouter()
+  const { t, language } = useLanguage()
+  const currentLanguage: UiLanguage =
+    language === "en" || language === "es" ? language : "no"
+  const text = openingLogTexts[currentLanguage]
+
   const [groups, setGroups] = useState<GroupedLogs[]>([])
   const [openDates, setOpenDates] = useState<Record<string, boolean>>({})
   const [feil, setFeil] = useState("")
@@ -63,7 +138,7 @@ export default function ApningLoggPage() {
       setFeil("")
 
       const listRes = await fetch(
-        `${url}/rest/v1/task_lists?select=id,name,venue_id&name=ilike.*åpning*&venue_id=eq.${selectedVenue}`,
+        `${url}/rest/v1/task_lists?select=id,name,venue_id&venue_id=eq.${selectedVenue}`,
         {
           headers: {
             apikey: key,
@@ -74,15 +149,24 @@ export default function ApningLoggPage() {
 
       const listData = await listRes.json()
 
-      if (!listRes.ok || !listData.length) {
-        setFeil("Fant ikke oppgavetypen Åpning for valgt sted")
+      if (!listRes.ok) {
+        setFeil(listData.message || t("couldNotFetchTaskLists"))
         return
       }
 
-      const listId = listData[0].id
+      const openingList = (listData as Array<{ id: string; name: string }>).find(
+        (list) => isOpeningList(list.name)
+      )
+
+      if (!openingList) {
+        setFeil(`${t("error")}: ${t("opening")} ${text.notFoundForVenue}`)
+        return
+      }
+
+      const listId = openingList.id
 
       const taskRes = await fetch(
-        `${url}/rest/v1/tasks?select=id,name,list_id,task_lists!inner(id,name,venue_id)&list_id=eq.${listId}&task_lists.venue_id=eq.${selectedVenue}`,
+        `${url}/rest/v1/tasks?select=id,name,name_no,name_en,name_es,list_id,task_lists!inner(id,name,venue_id)&list_id=eq.${listId}&task_lists.venue_id=eq.${selectedVenue}`,
         {
           headers: {
             apikey: key,
@@ -94,7 +178,7 @@ export default function ApningLoggPage() {
       const taskData = await taskRes.json()
 
       if (!taskRes.ok) {
-        setFeil(taskData.message || "Kunne ikke hente oppgaver")
+        setFeil(taskData.message || t("couldNotFetchTasks"))
         return
       }
 
@@ -106,7 +190,7 @@ export default function ApningLoggPage() {
       const taskIds = taskData.map((task: { id: string }) => task.id).join(",")
 
       const logRes = await fetch(
-        `${url}/rest/v1/logs?select=id,comment,image_url,created_at,task_id,employees(name),tasks(name)&task_id=in.(${taskIds})&order=created_at.desc`,
+        `${url}/rest/v1/logs?select=id,comment,image_url,created_at,task_id,employees(name),tasks(name,name_no,name_en,name_es)&task_id=in.(${taskIds})&order=created_at.desc`,
         {
           headers: {
             apikey: key,
@@ -118,7 +202,7 @@ export default function ApningLoggPage() {
       const logData = await logRes.json()
 
       if (!logRes.ok) {
-        setFeil(logData.message || "Kunne ikke hente logg")
+        setFeil(logData.message || `${t("couldNotFetchTasks")} ${text.logSuffix}`)
         return
       }
 
@@ -131,7 +215,7 @@ export default function ApningLoggPage() {
       })
       setOpenDates(initialOpenDates)
     } catch (err) {
-      setFeil(`Fetch-feil: ${String(err)}`)
+      setFeil(`${t("fetchError")}: ${String(err)}`)
     }
   }
 
@@ -162,7 +246,7 @@ export default function ApningLoggPage() {
     <main className="min-h-screen bg-black px-6 pt-16 text-white">
       <div className="mx-auto max-w-md">
         <h1 className="mb-10 text-center text-3xl font-bold">
-          Åpning
+          {t("opening")}
         </h1>
 
         {feil && <p className="mb-6 text-red-400">{feil}</p>}
@@ -180,7 +264,7 @@ export default function ApningLoggPage() {
                   <div>
                     <p className="text-lg font-semibold">{group.dateLabel}</p>
                     <p className="text-sm text-zinc-600">
-                      {group.items.length} registreringer
+                      {group.items.length} {text.registrations}
                     </p>
                   </div>
 
@@ -197,11 +281,11 @@ export default function ApningLoggPage() {
                         className="rounded-2xl bg-white p-5 text-black"
                       >
                         <p className="text-lg font-semibold">
-                          {log.tasks?.name || "Ukjent oppgave"}
+                          {getTaskDisplayName(log.tasks, language) || text.unknownTask}
                         </p>
 
                         <p className="mt-2 text-sm text-zinc-600">
-                          {log.employees?.name || "Ukjent"}
+                          {log.employees?.name || text.unknown}
                         </p>
 
                         <p className="text-sm text-zinc-600">
@@ -220,7 +304,7 @@ export default function ApningLoggPage() {
                         {log.image_url && (
                           <img
                             src={log.image_url}
-                            alt="Registrering"
+                            alt={text.registration}
                             className="mt-3 max-h-48 rounded-xl"
                           />
                         )}
@@ -233,7 +317,7 @@ export default function ApningLoggPage() {
           })}
 
           {groups.length === 0 && !feil && (
-            <p className="text-zinc-400">Ingen registreringer funnet</p>
+            <p className="text-zinc-400">{text.noRegistrationsFound}</p>
           )}
         </div>
 
@@ -241,7 +325,7 @@ export default function ApningLoggPage() {
           onClick={() => router.push("/logg")}
           className="mt-10 w-full rounded-xl border border-zinc-600 py-3 text-zinc-300"
         >
-          Tilbake
+          {t("back")}
         </button>
       </div>
     </main>

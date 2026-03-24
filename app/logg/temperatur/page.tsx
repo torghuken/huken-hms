@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useLanguage } from "@/lib/language"
 
 type TemperatureLogItem = {
   id: string
@@ -21,8 +22,64 @@ type GroupedLogs = {
   items: TemperatureLogItem[]
 }
 
+type UiLanguage = "no" | "en" | "es"
+
+const temperatureTexts: Record<
+  UiLanguage,
+  {
+    title: string
+    couldNotFetch: string
+    fetchError: string
+    registrations: string
+    unknownUnit: string
+    unknown: string
+    noRegistrations: string
+    registration: string
+    back: string
+  }
+> = {
+  no: {
+    title: "Temperaturkontroll",
+    couldNotFetch: "Kunne ikke hente temperaturkontroll",
+    fetchError: "Fetch-feil",
+    registrations: "registreringer",
+    unknownUnit: "Ukjent enhet",
+    unknown: "Ukjent",
+    noRegistrations: "Ingen registreringer funnet",
+    registration: "Registrering",
+    back: "Tilbake",
+  },
+  en: {
+    title: "Temperature control",
+    couldNotFetch: "Could not fetch temperature control",
+    fetchError: "Fetch error",
+    registrations: "registrations",
+    unknownUnit: "Unknown unit",
+    unknown: "Unknown",
+    noRegistrations: "No registrations found",
+    registration: "Registration",
+    back: "Back",
+  },
+  es: {
+    title: "Control de temperatura",
+    couldNotFetch: "No se pudo obtener el control de temperatura",
+    fetchError: "Error de carga",
+    registrations: "registros",
+    unknownUnit: "Unidad desconocida",
+    unknown: "Desconocido",
+    noRegistrations: "No se encontraron registros",
+    registration: "Registro",
+    back: "Volver",
+  },
+}
+
 export default function TemperaturLoggPage() {
   const router = useRouter()
+  const { language } = useLanguage()
+  const currentLanguage: UiLanguage =
+    language === "en" || language === "es" ? language : "no"
+  const text = temperatureTexts[currentLanguage]
+
   const [groups, setGroups] = useState<GroupedLogs[]>([])
   const [openDates, setOpenDates] = useState<Record<string, boolean>>({})
   const [feil, setFeil] = useState("")
@@ -74,7 +131,7 @@ export default function TemperaturLoggPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        setFeil(data.message || "Kunne ikke hente temperaturkontroll")
+        setFeil(data.message || text.couldNotFetch)
         return
       }
 
@@ -87,7 +144,7 @@ export default function TemperaturLoggPage() {
       })
       setOpenDates(initialOpenDates)
     } catch (err) {
-      setFeil(`Fetch-feil: ${String(err)}`)
+      setFeil(`${text.fetchError}: ${String(err)}`)
     }
   }
 
@@ -122,7 +179,7 @@ export default function TemperaturLoggPage() {
     <main className="min-h-screen bg-black px-6 pt-16 text-white">
       <div className="mx-auto max-w-md">
         <h1 className="mb-10 text-center text-3xl font-bold">
-          Temperaturkontroll
+          {text.title}
         </h1>
 
         {feil && <p className="mb-6 text-red-400">{feil}</p>}
@@ -140,7 +197,7 @@ export default function TemperaturLoggPage() {
                   <div>
                     <p className="text-lg font-semibold">{group.dateLabel}</p>
                     <p className="text-sm text-zinc-600">
-                      {group.items.length} registreringer
+                      {group.items.length} {text.registrations}
                     </p>
                   </div>
 
@@ -157,11 +214,11 @@ export default function TemperaturLoggPage() {
                         className="rounded-2xl bg-white p-5 text-black"
                       >
                         <p className="text-lg font-semibold">
-                          {log.temperature_units?.name || "Ukjent enhet"}
+                          {log.temperature_units?.name || text.unknownUnit}
                         </p>
 
                         <p className="mt-2 text-sm text-zinc-600">
-                          {log.employees?.name || "Ukjent"}
+                          {log.employees?.name || text.unknown}
                         </p>
 
                         <p className="text-sm text-zinc-600">
@@ -183,7 +240,7 @@ export default function TemperaturLoggPage() {
           })}
 
           {groups.length === 0 && !feil && (
-            <p className="text-zinc-400">Ingen registreringer funnet</p>
+            <p className="text-zinc-400">{text.noRegistrations}</p>
           )}
         </div>
 
@@ -191,7 +248,7 @@ export default function TemperaturLoggPage() {
           onClick={() => router.push("/logg")}
           className="mt-10 w-full rounded-xl border border-zinc-600 py-3 text-zinc-300"
         >
-          Tilbake
+          {text.back}
         </button>
       </div>
     </main>

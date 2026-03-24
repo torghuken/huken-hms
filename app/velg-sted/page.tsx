@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useLanguage } from "@/lib/language"
 
 type Venue = {
   id: string
@@ -9,10 +10,46 @@ type Venue = {
   slug: string
 }
 
+type UiLanguage = "no" | "en" | "es"
+
+const venuePageTexts: Record<
+  UiLanguage,
+  {
+    title: string
+    couldNotFetchVenues: string
+    fetchError: string
+    noVenuesFound: string
+  }
+> = {
+  no: {
+    title: "Velg sted",
+    couldNotFetchVenues: "Kunne ikke hente steder",
+    fetchError: "Fetch-feil",
+    noVenuesFound: "Ingen steder funnet",
+  },
+  en: {
+    title: "Choose venue",
+    couldNotFetchVenues: "Could not fetch venues",
+    fetchError: "Fetch error",
+    noVenuesFound: "No venues found",
+  },
+  es: {
+    title: "Elegir local",
+    couldNotFetchVenues: "No se pudieron obtener los locales",
+    fetchError: "Error de carga",
+    noVenuesFound: "No se encontraron locales",
+  },
+}
+
 export default function VelgStedPage() {
   const [venues, setVenues] = useState<Venue[]>([])
   const [feil, setFeil] = useState("")
   const router = useRouter()
+  const { language } = useLanguage()
+
+  const currentLanguage: UiLanguage =
+    language === "en" || language === "es" ? language : "no"
+  const text = venuePageTexts[currentLanguage]
 
   useEffect(() => {
     async function loadVenues() {
@@ -30,18 +67,18 @@ export default function VelgStedPage() {
         const data = await res.json()
 
         if (!res.ok) {
-          setFeil(data.message || "Kunne ikke hente steder")
+          setFeil(data.message || text.couldNotFetchVenues)
           return
         }
 
         setVenues(data)
       } catch (err) {
-        setFeil(`Fetch-feil: ${String(err)}`)
+        setFeil(`${text.fetchError}: ${String(err)}`)
       }
     }
 
     loadVenues()
-  }, [])
+  }, [text.couldNotFetchVenues, text.fetchError])
 
   function velgSted(venue: Venue) {
     localStorage.setItem("selectedVenue", venue.id)
@@ -53,7 +90,7 @@ export default function VelgStedPage() {
 
   return (
     <main style={{ padding: 40 }}>
-      <h1>Velg sted</h1>
+      <h1>{text.title}</h1>
 
       {feil && <p style={{ color: "red" }}>{feil}</p>}
 
@@ -77,6 +114,8 @@ export default function VelgStedPage() {
           {venue.name}
         </button>
       ))}
+
+      {venues.length === 0 && !feil && <p>{text.noVenuesFound}</p>}
     </main>
   )
 }

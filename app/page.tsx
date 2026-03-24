@@ -3,19 +3,18 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import LanguageSwitcher from "@/app/components/LanguageSwitcher"
-import { translations } from "@/lib/translations"
+import { useLanguage } from "@/lib/language"
 
 export default function HomePage() {
   const router = useRouter()
   const [navn, setNavn] = useState("")
   const [rolle, setRolle] = useState("staff")
-  const [lang, setLang] = useState<"no" | "en" | "es">("no")
+  const { t } = useLanguage()
 
   useEffect(() => {
     const employeeId = localStorage.getItem("selectedEmployeeId")
     const employeeName = localStorage.getItem("selectedEmployeeName")
     const employeeRole = localStorage.getItem("selectedEmployeeRole")
-    const savedLang = localStorage.getItem("lang") as "no" | "en" | "es" | null
 
     if (!employeeId) {
       router.replace("/ansatt")
@@ -24,10 +23,7 @@ export default function HomePage() {
 
     setNavn(employeeName || "")
     setRolle(employeeRole || "staff")
-    setLang(savedLang || "no")
   }, [router])
-
-  const t = translations[lang]
 
   function byttBruker() {
     localStorage.removeItem("selectedEmployeeId")
@@ -43,6 +39,7 @@ export default function HomePage() {
     localStorage.removeItem("selectedFixCategoryName")
     localStorage.removeItem("selectedTemperatureUnitId")
     localStorage.removeItem("selectedTemperatureUnitName")
+
     router.replace("/ansatt")
   }
 
@@ -51,28 +48,30 @@ export default function HomePage() {
       <div className="mx-auto flex max-w-md flex-col items-center">
         <LanguageSwitcher />
 
-        <h1 className="mb-12 text-2xl font-semibold">{navn}</h1>
+        <h1 className="mb-12 text-2xl font-semibold">
+          {navn || t("employee")}
+        </h1>
 
         <div className="flex w-full flex-col items-center gap-6">
           <button
             onClick={() => router.push("/oppgavevalg")}
             className="h-20 w-[90%] rounded-2xl bg-white text-xl font-semibold text-black shadow-lg active:scale-95 transition"
           >
-            {t.tasks}
+            {t("tasks")}
           </button>
 
           <button
             onClick={() => router.push("/temperatur")}
             className="h-20 w-[85%] rounded-2xl bg-white text-xl font-semibold text-black shadow-lg active:scale-95 transition"
           >
-            {t.temperature}
+            {t("temperatureControl")}
           </button>
 
           <button
             onClick={() => router.push("/meld")}
             className="h-20 w-[80%] rounded-2xl bg-yellow-400 text-xl font-semibold text-black shadow-lg active:scale-95 transition"
           >
-            {t.fix}
+            {t("thisNeedsFixing")}
           </button>
 
           {rolle === "leader" && (
@@ -81,21 +80,21 @@ export default function HomePage() {
                 onClick={() => router.push("/logg")}
                 className="h-20 w-[80%] rounded-2xl bg-zinc-700 text-xl font-semibold text-white shadow-lg active:scale-95 transition"
               >
-                {t.log}
+                {t("log")}
               </button>
 
               <button
                 onClick={() => router.push("/admin-oppgaver")}
                 className="h-20 w-[80%] rounded-2xl bg-zinc-800 text-xl font-semibold text-white shadow-lg active:scale-95 transition"
               >
-                {t.manageTasks}
+                {t("manageTasks")}
               </button>
 
               <button
                 onClick={() => router.push("/admin-temperatur")}
                 className="h-20 w-[80%] rounded-2xl bg-zinc-800 text-xl font-semibold text-white shadow-lg active:scale-95 transition"
               >
-                {t.manageTemperature}
+                {t("manageTemperature")}
               </button>
             </>
           )}
@@ -104,7 +103,7 @@ export default function HomePage() {
             onClick={byttBruker}
             className="mt-8 rounded-xl border border-zinc-600 px-5 py-3 text-sm text-zinc-300 active:scale-95 transition"
           >
-            {t.switchUser}
+            {t("switchUser")}
           </button>
         </div>
       </div>

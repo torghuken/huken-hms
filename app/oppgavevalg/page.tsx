@@ -3,12 +3,44 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { isLeader } from "@/lib/session"
+import { useLanguage } from "@/lib/language"
 
 type TaskList = {
   id: string
   name: string
   venue_id: string | null
   hide_for_6_hours: boolean
+}
+
+function normalizeListName(name: string) {
+  return name.trim().toLowerCase()
+}
+
+function isOpeningList(name: string) {
+  const normalized = normalizeListName(name)
+  return (
+    normalized === "åpning" ||
+    normalized === "opening" ||
+    normalized === "apertura"
+  )
+}
+
+function isOtherTasksList(name: string) {
+  const normalized = normalizeListName(name)
+  return (
+    normalized === "andre oppgaver" ||
+    normalized === "other tasks" ||
+    normalized === "otras tareas"
+  )
+}
+
+function isClosingList(name: string) {
+  const normalized = normalizeListName(name)
+  return (
+    normalized === "stenging" ||
+    normalized === "closing" ||
+    normalized === "cierre"
+  )
 }
 
 export default function OppgavevalgPage() {
@@ -18,7 +50,9 @@ export default function OppgavevalgPage() {
   const [ansatt, setAnsatt] = useState("")
   const [leader, setLeader] = useState(false)
   const [lagrerId, setLagrerId] = useState<string | null>(null)
+
   const router = useRouter()
+  const { t } = useLanguage()
 
   useEffect(() => {
     const selectedVenue = localStorage.getItem("selectedVenue")
@@ -41,7 +75,21 @@ export default function OppgavevalgPage() {
 
     setLeader(isLeader())
     loadTaskLists(selectedVenue)
-  }, [router])
+  }, [router, t])
+
+  function getListSortOrder(name: string) {
+    if (isOpeningList(name)) return 0
+    if (isOtherTasksList(name)) return 1
+    if (isClosingList(name)) return 2
+    return 999
+  }
+
+  function getTranslatedTaskListName(name: string) {
+    if (isOpeningList(name)) return t("opening")
+    if (isOtherTasksList(name)) return t("otherTasks")
+    if (isClosingList(name)) return t("closing")
+    return name
+  }
 
   async function loadTaskLists(selectedVenue: string) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -49,6 +97,7 @@ export default function OppgavevalgPage() {
 
     try {
       setFeil("")
+      setStatus("")
 
       const res = await fetch(
         `${url}/rest/v1/task_lists?select=id,name,venue_id,hide_for_6_hours&venue_id=eq.${selectedVenue}&order=name`,
@@ -63,29 +112,26 @@ export default function OppgavevalgPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        setFeil(data.message || "Kunne ikke hente oppgavelister")
+        setFeil(data.message || t("couldNotFetchTaskLists"))
         return
       }
 
-      const ønsketRekkefølge = ["Åpning", "Andre oppgaver", "Stenging"]
-
       const filtrerteLister = (data as TaskList[])
-        .filter((list) => ønsketRekkefølge.includes(list.name.trim()))
-        .sort(
-          (a, b) =>
-            ønsketRekkefølge.indexOf(a.name.trim()) -
-            ønsketRekkefølge.indexOf(b.name.trim())
+        .filter(
+          (list) =>
+            isOpeningList(list.name) ||
+            isOtherTasksList(list.name) ||
+            isClosingList(list.name)
         )
+        .sort((a, b) => getListSortOrder(a.name) - getListSortOrder(b.name))
 
       setTaskLists(filtrerteLister)
 
       if (filtrerteLister.length === 0) {
-        setFeil(
-          "Fant ingen riktige oppgavelister for dette stedet. Sjekk at task_lists for valgt venue inneholder: Åpning, Andre oppgaver, Stenging"
-        )
+        setFeil(t("missingDefaultTaskLists"))
       }
     } catch (err) {
-      setFeil(`Fetch-feil: ${String(err)}`)
+      setFeil(`${t("fetchError")}: ${String(err)}`)
     }
   }
 
@@ -103,7 +149,7 @@ export default function OppgavevalgPage() {
     const selectedVenue = localStorage.getItem("selectedVenue")
 
     if (!selectedVenue) {
-      setFeil("Fant ikke valgt sted")
+      setFeil(t("missingSelectedVenue"))
       return
     }
 
@@ -131,7 +177,7 @@ export default function OppgavevalgPage() {
 
       if (!res.ok) {
         const data = await res.text()
-        setFeil(data || "Kunne ikke oppdatere innstilling")
+        setFeil(data || t("couldNotUpdateSetting"))
         return
       }
 
@@ -143,13 +189,15 @@ export default function OppgavevalgPage() {
         )
       )
 
+      const listName = getTranslatedTaskListName(list.name)
+
       setStatus(
         nyttValg
-          ? `${list.name} skjules i 6 timer etter utføring`
-          : `${list.name} vises hele tiden`
+          ? `${listName} ${t("hiddenFor6HoursAfterCompletion")}`
+          : `${listName} ${t("shownAllTheTime")}`
       )
     } catch (err) {
-      setFeil(`Fetch-feil: ${String(err)}`)
+      setFeil(`${t("fetchError")}: ${String(err)}`)
     } finally {
       setLagrerId(null)
       loadTaskLists(selectedVenue)
@@ -166,10 +214,20 @@ export default function OppgavevalgPage() {
 
   return (
     <main style={{ padding: 40 }}>
-      <h1>Velg oppgavetype</h1>
+      <h1>{t("chooseTaskType")}</h1>
 
-      {ansatt && <p>Ansatt: {ansatt}</p>}
-      {leader && <p>Rolle: Leader</p>}
+      {ansatt && (
+        <p>
+          {t("employee")}: {ansatt}
+        </p>
+      )}
+
+      {leader && (
+        <p>
+          {t("role")}: {t("leader")}
+        </p>
+      )}
+
       {status && <p style={{ color: "green" }}>{status}</p>}
       {feil && <p style={{ color: "red" }}>{feil}</p>}
 
@@ -200,7 +258,7 @@ export default function OppgavevalgPage() {
                 flex: "1 1 280px",
               }}
             >
-              {list.name}
+              {getTranslatedTaskListName(list.name)}
             </button>
 
             {leader && (
@@ -222,10 +280,10 @@ export default function OppgavevalgPage() {
                 }}
               >
                 {lagrerId === list.id
-                  ? "Lagrer..."
+                  ? t("saving")
                   : list.hide_for_6_hours
-                  ? "Skjul 6t"
-                  : "Vis alltid"}
+                  ? t("hide6h")
+                  : t("showAlways")}
               </button>
             )}
           </div>
@@ -250,7 +308,7 @@ export default function OppgavevalgPage() {
             fontWeight: "bold",
           }}
         >
-          Administrer oppgaver
+          {t("manageTasks")}
         </button>
       )}
 
@@ -267,7 +325,7 @@ export default function OppgavevalgPage() {
           color: "#000",
         }}
       >
-        Tilbake
+        {t("back")}
       </button>
     </main>
   )

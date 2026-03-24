@@ -2,9 +2,86 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useLanguage } from "@/lib/language"
+
+type UiLanguage = "no" | "en" | "es"
+
+const fixCameraTexts: Record<
+  UiLanguage,
+  {
+    employee: string
+    title: string
+    couldNotOpenCamera: string
+    mustTakePhotoFirst: string
+    missingUser: string
+    uploadingImage: string
+    couldNotUploadImage: string
+    couldNotSaveLog: string
+    error: string
+    preview: string
+    whatNeedsFixing: string
+    save: string
+    takePhoto: string
+    newPhoto: string
+  }
+> = {
+  no: {
+    employee: "Ansatt",
+    title: "Dette må fikses",
+    couldNotOpenCamera: "Kunne ikke åpne kamera",
+    mustTakePhotoFirst: "Du må ta bilde først",
+    missingUser: "Mangler bruker",
+    uploadingImage: "Laster opp bilde...",
+    couldNotUploadImage: "Kunne ikke laste opp bilde",
+    couldNotSaveLog: "Kunne ikke lagre logg",
+    error: "Feil",
+    preview: "Forhåndsvisning",
+    whatNeedsFixing: "Hva må fikses?",
+    save: "Lagre",
+    takePhoto: "Ta bilde",
+    newPhoto: "Nytt bilde",
+  },
+  en: {
+    employee: "Employee",
+    title: "This needs fixing",
+    couldNotOpenCamera: "Could not open camera",
+    mustTakePhotoFirst: "You must take a photo first",
+    missingUser: "Missing user",
+    uploadingImage: "Uploading image...",
+    couldNotUploadImage: "Could not upload image",
+    couldNotSaveLog: "Could not save log",
+    error: "Error",
+    preview: "Preview",
+    whatNeedsFixing: "What needs fixing?",
+    save: "Save",
+    takePhoto: "Take photo",
+    newPhoto: "New photo",
+  },
+  es: {
+    employee: "Empleado",
+    title: "Esto necesita arreglo",
+    couldNotOpenCamera: "No se pudo abrir la cámara",
+    mustTakePhotoFirst: "Debes tomar una foto primero",
+    missingUser: "Falta usuario",
+    uploadingImage: "Subiendo imagen...",
+    couldNotUploadImage: "No se pudo subir la imagen",
+    couldNotSaveLog: "No se pudo guardar el registro",
+    error: "Error",
+    preview: "Vista previa",
+    whatNeedsFixing: "¿Qué hay que arreglar?",
+    save: "Guardar",
+    takePhoto: "Tomar foto",
+    newPhoto: "Nueva foto",
+  },
+}
 
 export default function KameraFiksPage() {
   const router = useRouter()
+  const { language } = useLanguage()
+  const currentLanguage: UiLanguage =
+    language === "en" || language === "es" ? language : "no"
+  const text = fixCameraTexts[currentLanguage]
+
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -32,6 +109,7 @@ export default function KameraFiksPage() {
       stopCamera()
       if (preview) URL.revokeObjectURL(preview)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function startCamera() {
@@ -69,7 +147,7 @@ export default function KameraFiksPage() {
         videoRef.current.srcObject = stream
       }
     } catch {
-      setStatus("Kunne ikke åpne kamera")
+      setStatus(text.couldNotOpenCamera)
     } finally {
       setStartingCamera(false)
     }
@@ -130,12 +208,12 @@ export default function KameraFiksPage() {
 
   async function lagre() {
     if (!imageBlob) {
-      setStatus("Du må ta bilde først")
+      setStatus(text.mustTakePhotoFirst)
       return
     }
 
     if (!employeeId) {
-      setStatus("Mangler bruker")
+      setStatus(text.missingUser)
       return
     }
 
@@ -144,7 +222,7 @@ export default function KameraFiksPage() {
     const filename = `${Date.now()}-fix.jpg`
 
     try {
-      setStatus("Laster opp bilde...")
+      setStatus(text.uploadingImage)
 
       const uploadRes = await fetch(
         `${url}/storage/v1/object/hms-images/${filename}`,
@@ -161,7 +239,7 @@ export default function KameraFiksPage() {
 
       if (!uploadRes.ok) {
         const errorText = await uploadRes.text()
-        setStatus(`Kunne ikke laste opp bilde: ${errorText}`)
+        setStatus(`${text.couldNotUploadImage}: ${errorText}`)
         return
       }
 
@@ -184,7 +262,7 @@ export default function KameraFiksPage() {
 
       if (!logRes.ok) {
         const errorText = await logRes.text()
-        setStatus(`Kunne ikke lagre logg: ${errorText}`)
+        setStatus(`${text.couldNotSaveLog}: ${errorText}`)
         return
       }
 
@@ -193,7 +271,7 @@ export default function KameraFiksPage() {
 
       router.replace("/")
     } catch (err) {
-      setStatus(`Feil: ${String(err)}`)
+      setStatus(`${text.error}: ${String(err)}`)
     }
   }
 
@@ -214,7 +292,7 @@ export default function KameraFiksPage() {
       {preview && (
         <img
           src={preview}
-          alt="Forhåndsvisning"
+          alt={text.preview}
           className="absolute inset-0 h-full w-full object-cover"
         />
       )}
@@ -228,15 +306,17 @@ export default function KameraFiksPage() {
       />
 
       <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/70 to-transparent p-5">
-        <p className="text-sm opacity-80">Ansatt: {ansatt}</p>
-        <p className="text-2xl font-semibold">Dette må fikses</p>
+        <p className="text-sm opacity-80">
+          {text.employee}: {ansatt}
+        </p>
+        <p className="text-2xl font-semibold">{text.title}</p>
         <p className="text-sm opacity-90">{kategori}</p>
       </div>
 
       {preview && (
         <div className="absolute inset-x-0 bottom-28 px-4">
           <textarea
-            placeholder="Hva må fikses?"
+            placeholder={text.whatNeedsFixing}
             value={kommentar}
             onChange={(e) => setKommentar(e.target.value)}
             className="w-full rounded-2xl bg-black/60 p-4 text-white outline-none backdrop-blur"
@@ -252,6 +332,7 @@ export default function KameraFiksPage() {
             <button
               onClick={taBilde}
               disabled={startingCamera}
+              aria-label={text.takePhoto}
               className="h-20 w-20 rounded-full border-4 border-white bg-white/20 shadow-xl"
             />
             <div className="w-16" />
@@ -260,6 +341,7 @@ export default function KameraFiksPage() {
           <>
             <button
               onClick={nyttBilde}
+              aria-label={text.newPhoto}
               className="min-w-14 rounded-full bg-black/60 px-5 py-3 text-lg"
             >
               ✕
@@ -269,7 +351,7 @@ export default function KameraFiksPage() {
               onClick={lagre}
               className="rounded-full bg-white px-8 py-4 text-lg font-semibold text-black"
             >
-              Lagre
+              {text.save}
             </button>
           </>
         )}

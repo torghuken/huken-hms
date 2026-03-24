@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useLanguage } from "@/lib/language"
 import {
   DndContext,
   PointerSensor,
@@ -28,14 +29,116 @@ type TemperatureUnit = {
   venue_id?: string | null
 }
 
+type UiLanguage = "no" | "en" | "es"
+
+const adminTemperatureTexts: Record<
+  UiLanguage,
+  {
+    title: string
+    moving: string
+    drag: string
+    delete: string
+    unitNamePlaceholder: string
+    add: string
+    back: string
+    imageAlt: string
+    missingVenue: string
+    missingName: string
+    loading: string
+    adding: string
+    deleting: string
+    orderSaved: string
+    couldNotFetchUnits: string
+    couldNotUploadImage: string
+    couldNotAddUnit: string
+    couldNotDeleteUnit: string
+    couldNotSaveOrder: string
+    fetchError: string
+  }
+> = {
+  no: {
+    title: "Administrer temperatur",
+    moving: "Flytter...",
+    drag: "Dra",
+    delete: "Slett",
+    unitNamePlaceholder: "Navn på enhet",
+    add: "Legg til",
+    back: "Tilbake",
+    imageAlt: "Temperaturenhet",
+    missingVenue: "Fant ikke valgt sted",
+    missingName: "Skriv navn på enhet",
+    loading: "Laster...",
+    adding: "Legger til...",
+    deleting: "Sletter...",
+    orderSaved: "Rekkefølgen er lagret",
+    couldNotFetchUnits: "Kunne ikke hente temperaturenheter",
+    couldNotUploadImage: "Kunne ikke laste opp bilde",
+    couldNotAddUnit: "Kunne ikke legge til enhet",
+    couldNotDeleteUnit: "Kunne ikke slette enhet",
+    couldNotSaveOrder: "Kunne ikke lagre rekkefølge",
+    fetchError: "Fetch-feil",
+  },
+  en: {
+    title: "Manage temperature",
+    moving: "Moving...",
+    drag: "Drag",
+    delete: "Delete",
+    unitNamePlaceholder: "Unit name",
+    add: "Add",
+    back: "Back",
+    imageAlt: "Temperature unit",
+    missingVenue: "Could not find selected venue",
+    missingName: "Enter unit name",
+    loading: "Loading...",
+    adding: "Adding...",
+    deleting: "Deleting...",
+    orderSaved: "Order saved",
+    couldNotFetchUnits: "Could not fetch temperature units",
+    couldNotUploadImage: "Could not upload image",
+    couldNotAddUnit: "Could not add unit",
+    couldNotDeleteUnit: "Could not delete unit",
+    couldNotSaveOrder: "Could not save order",
+    fetchError: "Fetch error",
+  },
+  es: {
+    title: "Administrar temperatura",
+    moving: "Moviendo...",
+    drag: "Arrastrar",
+    delete: "Eliminar",
+    unitNamePlaceholder: "Nombre de la unidad",
+    add: "Agregar",
+    back: "Volver",
+    imageAlt: "Unidad de temperatura",
+    missingVenue: "No se encontró el local seleccionado",
+    missingName: "Escribe el nombre de la unidad",
+    loading: "Cargando...",
+    adding: "Agregando...",
+    deleting: "Eliminando...",
+    orderSaved: "Orden guardado",
+    couldNotFetchUnits: "No se pudieron obtener las unidades de temperatura",
+    couldNotUploadImage: "No se pudo subir la imagen",
+    couldNotAddUnit: "No se pudo agregar la unidad",
+    couldNotDeleteUnit: "No se pudo eliminar la unidad",
+    couldNotSaveOrder: "No se pudo guardar el orden",
+    fetchError: "Error de carga",
+  },
+}
+
 function SortableUnitCard({
   unit,
   onDelete,
   flytterId,
+  text,
 }: {
   unit: TemperatureUnit
   onDelete: (unit: TemperatureUnit) => void
   flytterId: string | null
+  text: {
+    moving: string
+    drag: string
+    delete: string
+    imageAlt: string
+  }
 }) {
   const {
     attributes,
@@ -62,14 +165,13 @@ function SortableUnitCard({
             {unit.image_url && (
               <img
                 src={unit.image_url}
-                alt={unit.name}
+                alt={text.imageAlt}
                 className="mt-3 max-h-40 w-full rounded-xl object-cover"
               />
             )}
           </div>
 
           <div className="flex flex-col gap-2">
-            {/* Dra */}
             <button
               {...attributes}
               {...listeners}
@@ -77,15 +179,14 @@ function SortableUnitCard({
               className="rounded-lg bg-zinc-200 px-3 py-2 text-sm font-semibold text-black"
               style={{ cursor: "grab" }}
             >
-              {flytterId === unit.id ? "Flytter..." : "Dra"}
+              {flytterId === unit.id ? text.moving : text.drag}
             </button>
 
-            {/* Slett */}
             <button
               onClick={() => onDelete(unit)}
               className="rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white"
             >
-              Slett
+              {text.delete}
             </button>
           </div>
         </div>
@@ -96,13 +197,17 @@ function SortableUnitCard({
 
 export default function AdminTemperaturPage() {
   const router = useRouter()
+  const { language } = useLanguage()
+  const currentLanguage: UiLanguage =
+    language === "en" || language === "es" ? language : "no"
+  const text = adminTemperatureTexts[currentLanguage]
+
   const [units, setUnits] = useState<TemperatureUnit[]>([])
   const [feil, setFeil] = useState("")
   const [status, setStatus] = useState("")
   const [nyEnhet, setNyEnhet] = useState("")
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [laster, setLaster] = useState(false)
   const [flytterId, setFlytterId] = useState<string | null>(null)
 
   const sensors = useSensors(
@@ -124,27 +229,56 @@ export default function AdminTemperaturPage() {
     loadUnits(selectedVenue)
   }, [router])
 
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+    }
+  }, [previewUrl])
+
   async function loadUnits(venue: string) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-    const res = await fetch(
-      `${url}/rest/v1/temperature_units?select=*&venue_id=eq.${venue}&order=sort_order.asc`,
-      {
-        headers: {
-          apikey: key,
-          Authorization: `Bearer ${key}`,
-        },
-      }
-    )
+    try {
+      setFeil("")
+      setStatus(text.loading)
 
-    const data = await res.json()
-    setUnits(data || [])
+      const res = await fetch(
+        `${url}/rest/v1/temperature_units?select=*&venue_id=eq.${venue}&order=sort_order.asc`,
+        {
+          headers: {
+            apikey: key,
+            Authorization: `Bearer ${key}`,
+          },
+        }
+      )
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setFeil(data.message || text.couldNotFetchUnits)
+        setStatus("")
+        return
+      }
+
+      setUnits(data || [])
+      setStatus("")
+    } catch (err) {
+      setFeil(`${text.fetchError}: ${String(err)}`)
+      setStatus("")
+    }
   }
 
   function onPickImage(file: File | null) {
+    if (previewUrl) URL.revokeObjectURL(previewUrl)
+
     setImageFile(file)
-    if (file) setPreviewUrl(URL.createObjectURL(file))
+
+    if (file) {
+      setPreviewUrl(URL.createObjectURL(file))
+    } else {
+      setPreviewUrl(null)
+    }
   }
 
   async function uploadImageIfNeeded() {
@@ -152,10 +286,9 @@ export default function AdminTemperaturPage() {
 
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
     const filename = `temperature-${Date.now()}.jpg`
 
-    await fetch(`${url}/storage/v1/object/temperature-images/${filename}`, {
+    const res = await fetch(`${url}/storage/v1/object/temperature-images/${filename}`, {
       method: "POST",
       headers: {
         apikey: key,
@@ -165,58 +298,107 @@ export default function AdminTemperaturPage() {
       body: imageFile,
     })
 
+    if (!res.ok) {
+      const errorText = await res.text()
+      throw new Error(errorText || text.couldNotUploadImage)
+    }
+
     return `${url}/storage/v1/object/public/temperature-images/${filename}`
   }
 
   async function leggTilEnhet() {
     const venue = localStorage.getItem("selectedVenue")
-    if (!venue) return
+    if (!venue) {
+      setFeil(text.missingVenue)
+      return
+    }
 
-    const imageUrl = await uploadImageIfNeeded()
+    if (!nyEnhet.trim()) {
+      setFeil(text.missingName)
+      return
+    }
 
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-    await fetch(`${url}/rest/v1/temperature_units`, {
-      method: "POST",
-      headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: nyEnhet,
-        active: true,
-        sort_order: units.length + 1,
-        image_url: imageUrl,
-        venue_id: venue,
-      }),
-    })
+    try {
+      setFeil("")
+      setStatus(text.adding)
 
-    setNyEnhet("")
-    setImageFile(null)
-    setPreviewUrl(null)
-    loadUnits(venue)
+      const imageUrl = await uploadImageIfNeeded()
+
+      const res = await fetch(`${url}/rest/v1/temperature_units`, {
+        method: "POST",
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: nyEnhet.trim(),
+          active: true,
+          sort_order: units.filter((u) => u.active).length + 1,
+          image_url: imageUrl,
+          venue_id: venue,
+        }),
+      })
+
+      if (!res.ok) {
+        const errorText = await res.text()
+        setFeil(errorText || text.couldNotAddUnit)
+        setStatus("")
+        return
+      }
+
+      setNyEnhet("")
+      setImageFile(null)
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+      setPreviewUrl(null)
+      setStatus("")
+      loadUnits(venue)
+    } catch (err) {
+      setFeil(`${text.fetchError}: ${String(err)}`)
+      setStatus("")
+    }
   }
 
   async function slettEnhet(unit: TemperatureUnit) {
     const venue = localStorage.getItem("selectedVenue")
-    if (!venue) return
+    if (!venue) {
+      setFeil(text.missingVenue)
+      return
+    }
 
-    await fetch(
-      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/temperature_units?id=eq.${unit.id}`,
-      {
-        method: "PATCH",
-        headers: {
-          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ active: false }),
+    try {
+      setFeil("")
+      setStatus(text.deleting)
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/temperature_units?id=eq.${unit.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ active: false }),
+        }
+      )
+
+      if (!res.ok) {
+        const errorText = await res.text()
+        setFeil(errorText || text.couldNotDeleteUnit)
+        setStatus("")
+        return
       }
-    )
 
-    loadUnits(venue)
+      setStatus("")
+      loadUnits(venue)
+    } catch (err) {
+      setFeil(`${text.fetchError}: ${String(err)}`)
+      setStatus("")
+    }
   }
 
   async function saveSortOrder(updated: TemperatureUnit[]) {
@@ -224,7 +406,7 @@ export default function AdminTemperaturPage() {
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
     for (let i = 0; i < updated.length; i++) {
-      await fetch(`${url}/rest/v1/temperature_units?id=eq.${updated[i].id}`, {
+      const res = await fetch(`${url}/rest/v1/temperature_units?id=eq.${updated[i].id}`, {
         method: "PATCH",
         headers: {
           apikey: key,
@@ -233,6 +415,11 @@ export default function AdminTemperaturPage() {
         },
         body: JSON.stringify({ sort_order: i + 1 }),
       })
+
+      if (!res.ok) {
+        const errorText = await res.text()
+        throw new Error(errorText || text.couldNotSaveOrder)
+      }
     }
   }
 
@@ -240,61 +427,108 @@ export default function AdminTemperaturPage() {
     const { active, over } = event
     if (!over || active.id === over.id) return
 
-    const oldIndex = units.findIndex((u) => u.id === active.id)
-    const newIndex = units.findIndex((u) => u.id === over.id)
+    const visibleUnits = units.filter((u) => u.active)
+    const oldIndex = visibleUnits.findIndex((u) => u.id === active.id)
+    const newIndex = visibleUnits.findIndex((u) => u.id === over.id)
 
-    const newUnits = arrayMove(units, oldIndex, newIndex)
-    setUnits(newUnits)
+    if (oldIndex === -1 || newIndex === -1) return
 
-    setFlytterId(String(active.id))
-    await saveSortOrder(newUnits)
-    setFlytterId(null)
+    const reorderedVisible = arrayMove(visibleUnits, oldIndex, newIndex).map((unit, index) => ({
+      ...unit,
+      sort_order: index + 1,
+    }))
+
+    const reorderedIds = new Set(reorderedVisible.map((u) => u.id))
+    const hiddenUnits = units.filter((u) => !reorderedIds.has(u.id))
+
+    setUnits([...reorderedVisible, ...hiddenUnits])
+
+    try {
+      setFeil("")
+      setStatus("")
+      setFlytterId(String(active.id))
+      await saveSortOrder(reorderedVisible)
+      setStatus(text.orderSaved)
+    } catch (err) {
+      setFeil(`${text.fetchError}: ${String(err)}`)
+      const venue = localStorage.getItem("selectedVenue")
+      if (venue) {
+        loadUnits(venue)
+      }
+    } finally {
+      setFlytterId(null)
+    }
   }
 
   return (
     <main className="min-h-screen bg-black p-6 text-white">
-      <h1 className="mb-8 text-center text-3xl font-bold">
-        Administrer temperatur
-      </h1>
+      <h1 className="mb-8 text-center text-3xl font-bold">{text.title}</h1>
 
       <div className="mx-auto max-w-md space-y-6">
-        <div className="rounded-xl bg-zinc-900 p-4 space-y-3">
+        {feil && <p className="text-red-400">{feil}</p>}
+        {status && <p className="text-green-400">{status}</p>}
+
+        <div className="space-y-3 rounded-xl bg-zinc-900 p-4">
           <input
             value={nyEnhet}
             onChange={(e) => setNyEnhet(e.target.value)}
-            placeholder="Navn på enhet"
+            placeholder={text.unitNamePlaceholder}
             className="w-full rounded-xl bg-white p-3 text-black"
           />
 
-          <input type="file" onChange={(e) => onPickImage(e.target.files?.[0] || null)} />
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => onPickImage(e.target.files?.[0] || null)}
+          />
 
-          {previewUrl && <img src={previewUrl} className="rounded-xl" />}
+          {previewUrl && (
+            <img
+              src={previewUrl}
+              alt={text.imageAlt}
+              className="rounded-xl"
+            />
+          )}
 
-          <button onClick={leggTilEnhet} className="w-full bg-white text-black rounded-xl py-3">
-            Legg til
+          <button
+            onClick={leggTilEnhet}
+            className="w-full rounded-xl bg-white py-3 text-black"
+          >
+            {text.add}
           </button>
         </div>
 
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={units.map((u) => u.id)} strategy={verticalListSortingStrategy}>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={units.filter((u) => u.active).map((u) => u.id)}
+            strategy={verticalListSortingStrategy}
+          >
             <div className="flex flex-col gap-4">
-              {units.filter(u => u.active).map((unit) => (
-                <SortableUnitCard
-                  key={unit.id}
-                  unit={unit}
-                  onDelete={slettEnhet}
-                  flytterId={flytterId}
-                />
-              ))}
+              {units
+                .filter((u) => u.active)
+                .sort((a, b) => a.sort_order - b.sort_order)
+                .map((unit) => (
+                  <SortableUnitCard
+                    key={unit.id}
+                    unit={unit}
+                    onDelete={slettEnhet}
+                    flytterId={flytterId}
+                    text={text}
+                  />
+                ))}
             </div>
           </SortableContext>
         </DndContext>
 
         <button
           onClick={() => router.push("/")}
-          className="w-full border border-zinc-600 rounded-xl py-3"
+          className="w-full rounded-xl border border-zinc-600 py-3"
         >
-          Tilbake
+          {text.back}
         </button>
       </div>
     </main>

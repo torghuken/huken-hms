@@ -2,10 +2,74 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
+import { useLanguage } from "@/lib/language"
+
+type UiLanguage = "no" | "en" | "es"
+
+const temperatureUnitTexts: Record<
+  UiLanguage,
+  {
+    employee: string
+    couldNotFetchUnit: string
+    fetchUnitError: string
+    missingNameOrUnit: string
+    selectTemperatureFirst: string
+    saving: string
+    couldNotSave: string
+    saved: string
+    error: string
+    titleFallback: string
+    back: string
+  }
+> = {
+  no: {
+    employee: "Ansatt",
+    couldNotFetchUnit: "Kunne ikke hente enhet",
+    fetchUnitError: "Feil ved henting av enhet",
+    missingNameOrUnit: "Mangler navn eller enhet",
+    selectTemperatureFirst: "Velg temperatur først",
+    saving: "Lagrer...",
+    couldNotSave: "Kunne ikke lagre",
+    saved: "Lagret",
+    error: "Feil",
+    titleFallback: "Temperatur",
+    back: "Tilbake",
+  },
+  en: {
+    employee: "Employee",
+    couldNotFetchUnit: "Could not fetch unit",
+    fetchUnitError: "Error fetching unit",
+    missingNameOrUnit: "Missing name or unit",
+    selectTemperatureFirst: "Select temperature first",
+    saving: "Saving...",
+    couldNotSave: "Could not save",
+    saved: "Saved",
+    error: "Error",
+    titleFallback: "Temperature",
+    back: "Back",
+  },
+  es: {
+    employee: "Empleado",
+    couldNotFetchUnit: "No se pudo obtener la unidad",
+    fetchUnitError: "Error al obtener la unidad",
+    missingNameOrUnit: "Falta nombre o unidad",
+    selectTemperatureFirst: "Selecciona primero la temperatura",
+    saving: "Guardando...",
+    couldNotSave: "No se pudo guardar",
+    saved: "Guardado",
+    error: "Error",
+    titleFallback: "Temperatura",
+    back: "Volver",
+  },
+}
 
 export default function TemperaturEnhetPage() {
   const router = useRouter()
   const params = useParams()
+  const { language } = useLanguage()
+  const currentLanguage: UiLanguage =
+    language === "en" || language === "es" ? language : "no"
+  const text = temperatureUnitTexts[currentLanguage]
   const unitId = params?.id as string
 
   const [ansatt, setAnsatt] = useState("")
@@ -53,7 +117,7 @@ export default function TemperaturEnhetPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        setStatus(data.message || "Kunne ikke hente enhet")
+        setStatus(data.message || text.couldNotFetchUnit)
         return
       }
 
@@ -65,7 +129,7 @@ export default function TemperaturEnhetPage() {
 
       setUnitImageUrl(unit?.image_url || null)
     } catch (err) {
-      setStatus(`Feil ved henting av enhet: ${String(err)}`)
+      setStatus(`${text.fetchUnitError}: ${String(err)}`)
     }
   }
 
@@ -85,12 +149,12 @@ export default function TemperaturEnhetPage() {
 
   async function lagre() {
     if (!employeeId || !unitId) {
-      setStatus("Mangler navn eller enhet")
+      setStatus(text.missingNameOrUnit)
       return
     }
 
     if (!value) {
-      setStatus("Velg temperatur først")
+      setStatus(text.selectTemperatureFirst)
       return
     }
 
@@ -102,7 +166,7 @@ export default function TemperaturEnhetPage() {
     try {
       setFlash(true)
       setTimeout(() => setFlash(false), 120)
-      setStatus("Lagrer...")
+      setStatus(text.saving)
 
       const res = await fetch(`${url}/rest/v1/temperature_logs`, {
         method: "POST",
@@ -120,19 +184,19 @@ export default function TemperaturEnhetPage() {
       })
 
       if (!res.ok) {
-        const text = await res.text()
-        setStatus(`Kunne ikke lagre: ${text}`)
+        const responseText = await res.text()
+        setStatus(`${text.couldNotSave}: ${responseText}`)
         return
       }
 
-      setStatus("Lagret")
+      setStatus(text.saved)
       setValue("")
 
       setTimeout(() => {
         router.replace("/temperatur")
       }, 500)
     } catch (err) {
-      setStatus(`Feil: ${String(err)}`)
+      setStatus(`${text.error}: ${String(err)}`)
     }
   }
 
@@ -157,9 +221,11 @@ export default function TemperaturEnhetPage() {
       />
 
       <div className="mx-auto flex max-w-md flex-col">
-        <p className="text-sm text-zinc-400">Ansatt: {ansatt}</p>
+        <p className="text-sm text-zinc-400">
+          {text.employee}: {ansatt}
+        </p>
         <h1 className="mt-2 text-center text-3xl font-bold">
-          {unitName || "Temperatur"}
+          {unitName || text.titleFallback}
         </h1>
 
         <div
@@ -212,7 +278,7 @@ export default function TemperaturEnhetPage() {
           onClick={() => router.push("/temperatur")}
           className="mt-8 w-full rounded-xl border border-zinc-600 py-3 text-zinc-300"
         >
-          Tilbake
+          {text.back}
         </button>
       </div>
     </main>

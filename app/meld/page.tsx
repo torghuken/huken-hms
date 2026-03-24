@@ -1,15 +1,19 @@
 "use client"
 
-import { useRouter } from "next/navigation"
 import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { useLanguage } from "@/lib/language"
 
 type FixItem = {
   id: string
-  navn: string
+  name_no: string
+  name_en: string
+  name_es: string
 }
 
 export default function MeldPage() {
   const router = useRouter()
+  const { language, t } = useLanguage()
 
   useEffect(() => {
     const employeeId = localStorage.getItem("selectedEmployeeId")
@@ -17,28 +21,72 @@ export default function MeldPage() {
     if (!employeeId) {
       router.replace("/ansatt")
     }
-  }, [])
+  }, [router])
 
   const kategorier: FixItem[] = [
-    { id: "noe-er-delagt", navn: "Noe er ødelagt" },
-    { id: "noe-virker-ikke", navn: "Noe virker ikke" },
-    { id: "renhold-mangler", navn: "Renhold mangler" },
-    { id: "sikkerhet", navn: "Sikkerhet" },
-    { id: "gjesteomrade", navn: "Gjesteområde" },
-    { id: "lager-varer", navn: "Lager / varer" },
-    { id: "annet", navn: "Annet" },
+    {
+      id: "noe-er-delagt",
+      name_no: "Noe er ødelagt",
+      name_en: "Something is broken",
+      name_es: "Algo está roto",
+    },
+    {
+      id: "noe-virker-ikke",
+      name_no: "Noe virker ikke",
+      name_en: "Something is not working",
+      name_es: "Algo no funciona",
+    },
+    {
+      id: "renhold-mangler",
+      name_no: "Renhold mangler",
+      name_en: "Cleaning needed",
+      name_es: "Falta limpieza",
+    },
+    {
+      id: "sikkerhet",
+      name_no: "Sikkerhet",
+      name_en: "Safety",
+      name_es: "Seguridad",
+    },
+    {
+      id: "gjesteomrade",
+      name_no: "Gjesteområde",
+      name_en: "Guest area",
+      name_es: "Área de clientes",
+    },
+    {
+      id: "lager-varer",
+      name_no: "Lager / varer",
+      name_en: "Stock / supplies",
+      name_es: "Almacén / suministros",
+    },
+    {
+      id: "annet",
+      name_no: "Annet",
+      name_en: "Other",
+      name_es: "Otro",
+    },
   ]
 
+  function getName(item: FixItem) {
+    if (language === "en") return item.name_en
+    if (language === "es") return item.name_es
+    return item.name_no
+  }
+
   function velgKategori(item: FixItem) {
+    const name = getName(item)
+
     localStorage.setItem("selectedFixCategoryId", item.id)
-    localStorage.setItem("selectedFixCategoryName", item.navn)
+    localStorage.setItem("selectedFixCategoryName", name)
+
     router.push("/kamera-fiks")
   }
 
   return (
     <main className="min-h-screen bg-black px-6 pt-20 text-white">
       <h1 className="mb-12 text-center text-3xl font-bold">
-        Dette må fikses
+        {t("thisNeedsFixing")}
       </h1>
 
       <div className="flex flex-col items-center gap-6">
@@ -48,7 +96,7 @@ export default function MeldPage() {
             onClick={() => velgKategori(item)}
             className="h-20 w-[85%] rounded-2xl bg-yellow-400 px-6 text-left text-xl font-semibold text-black shadow-lg active:scale-95 transition"
           >
-            {item.navn}
+            {getName(item)}
           </button>
         ))}
       </div>
