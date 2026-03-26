@@ -1,4 +1,4 @@
-export type Language = "no" | "en" | "es"
+export type Language = "no" | "en" | "es" | "ru"
 
 export const translations = {
   no: {
@@ -6,6 +6,7 @@ export const translations = {
     norwegian: "Norsk",
     english: "English",
     spanish: "Español",
+    russian: "Русский",
 
     tasks: "Oppgaver",
     temperatureControl: "Temperaturkontroll",
@@ -74,6 +75,7 @@ export const translations = {
     norwegian: "Norwegian",
     english: "English",
     spanish: "Español",
+    russian: "Русский",
 
     tasks: "Tasks",
     temperatureControl: "Temperature control",
@@ -143,6 +145,7 @@ export const translations = {
     norwegian: "Noruego",
     english: "Inglés",
     spanish: "Español",
+    russian: "Русский",
 
     tasks: "Tareas",
     temperatureControl: "Control de temperatura",
@@ -206,5 +209,75 @@ export const translations = {
     fixGuestArea: "Área de invitados",
     fixStock: "Almacén / productos",
     fixOther: "Otro",
+  },
+
+  ru: {
+    chooseLanguage: "Выбрать язык",
+    norwegian: "Норвежский",
+    english: "Английский",
+    spanish: "Испанский",
+    russian: "Русский",
+
+    tasks: "Задачи",
+    temperatureControl: "Контроль температуры",
+    temperature: "Температура",
+    thisNeedsFixing: "Нужно исправить",
+    log: "Журнал",
+    manageTasks: "Управление задачами",
+    manageTemperature: "Управление температурой",
+    switchUser: "Сменить пользователя",
+
+    chooseTaskType: "Выбрать тип задачи",
+    employee: "Сотрудник",
+    role: "Роль",
+    leader: "Руководитель",
+    staff: "Персонал",
+    showAlways: "Показывать всегда",
+    back: "Назад",
+
+    opening: "Открытие",
+    otherTasks: "Другие задачи",
+    closing: "Закрытие",
+
+    errorLoading: "Не удалось загрузить",
+    couldNotFetchTaskLists: "Не удалось получить списки задач",
+    missingDefaultTaskLists:
+      "Не найдены нужные списки задач для этого заведения. Проверьте task_lists для выбранного заведения.",
+    fetchError: "Ошибка загрузки",
+    missingSelectedVenue: "Не найдено выбранное заведение",
+    couldNotUpdateSetting: "Не удалось обновить настройку",
+    hiddenFor6HoursAfterCompletion:
+      "будет скрыто на 6 часов после выполнения",
+    shownAllTheTime: "показывается всё время",
+    saving: "Сохранение...",
+    hide6h: "Скрыть 6ч",
+
+    selectTask: "Выбрать задачу",
+    list: "Список",
+    noTaskTypeSelected: "Тип задачи не выбран",
+    couldNotFetchTasks: "Не удалось получить задачи",
+    couldNotFetchRecentLogs: "Не удалось получить последние записи",
+    couldNotDeleteTask: "Не удалось удалить задачу",
+    taskDeleted: "Задача удалена",
+    deleteError: "Ошибка удаления",
+    couldNotSaveOrder: "Не удалось сохранить порядок",
+    orderSavedFor: "Порядок сохранён для",
+    error: "Ошибка",
+    adminTaskHelp:
+      'Администратор: используйте «Перетащить» для изменения порядка или «Удалить» для удаления задачи.',
+    noTasksToday: "Нет задач на сегодня",
+    noTasksFound: "Задачи не найдены",
+    delete: "Удалить",
+    drag: "Перетащить",
+    moving: "Перемещение...",
+
+    // 🔥 FIX KATEGORIER
+    fixBroken: "Что-то сломано",
+    fixNotWorking: "Что-то не работает",
+    fixCleaning: "Не хватает уборки",
+    fixSecurity: "Безопасность",
+    fixGuestArea: "Зона гостей",
+    fixStock: "Склад / товары",
+    fixOther: "Другое",
   },
 } as const

@@ -21,7 +21,7 @@ type LanguageContextType = {
 const LanguageContext = createContext<LanguageContextType | null>(null)
 
 function isValidLanguage(value: string | null): value is Language {
-  return value === "no" || value === "en" || value === "es"
+  return value === "no" || value === "en" || value === "es" || value === "ru"
 }
 
 export function LanguageProvider({ children }: { children: ReactNode }) {

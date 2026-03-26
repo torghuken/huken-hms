@@ -26,6 +26,7 @@ type Task = {
   name_no?: string | null
   name_en?: string | null
   name_es?: string | null
+  name_ru?: string | null
   active: boolean
   sort_order: number | null
   list_id: string | null
@@ -60,7 +61,7 @@ type DaysState = {
   sunday: boolean
 }
 
-type UiLanguage = "no" | "en" | "es"
+type UiLanguage = "no" | "en" | "es" | "ru"
 
 const defaultDays: DaysState = {
   monday: true,
@@ -124,6 +125,7 @@ const adminTaskTexts: Record<
     friday: string
     saturday: string
     sunday: string
+    translating: string
   }
 > = {
   no: {
@@ -176,6 +178,7 @@ const adminTaskTexts: Record<
     friday: "Fredag",
     saturday: "Lørdag",
     sunday: "Søndag",
+    translating: "Oversetter...",
   },
   en: {
     title: "Manage tasks",
@@ -227,6 +230,7 @@ const adminTaskTexts: Record<
     friday: "Friday",
     saturday: "Saturday",
     sunday: "Sunday",
+    translating: "Translating...",
   },
   es: {
     title: "Administrar tareas",
@@ -278,116 +282,66 @@ const adminTaskTexts: Record<
     friday: "Viernes",
     saturday: "Sábado",
     sunday: "Domingo",
+    translating: "Traduciendo...",
   },
-}
-
-function normalizeText(text: string) {
-  return text.trim().toLowerCase()
-}
-
-function autoTranslateTaskName(input: string) {
-  const original = input.trim()
-  const normalized = normalizeText(original)
-
-  const exactMap: Record<string, { en: string; es: string }> = {
-    "fyll is": { en: "Refill ice", es: "Rellenar hielo" },
-    "skru på ovn": { en: "Turn on oven", es: "Encender horno" },
-    "skru av ovn": { en: "Turn off oven", es: "Apagar horno" },
-    "tøm søppel": { en: "Empty trash", es: "Vaciar basura" },
-    "vask gulv": { en: "Wash floor", es: "Lavar el suelo" },
-    "vask toalett": { en: "Clean toilet", es: "Limpiar el baño" },
-    "vask toaletter": { en: "Clean toilets", es: "Limpiar los baños" },
-    "fyll opp bar": { en: "Restock bar", es: "Reponer la barra" },
-    "fyll opp kjøleskap": { en: "Restock fridge", es: "Reponer la nevera" },
-    "fyll opp øl": { en: "Restock beer", es: "Reponer cerveza" },
-    "fyll opp vin": { en: "Restock wine", es: "Reponer vino" },
-    "fyll opp sprit": { en: "Restock spirits", es: "Reponer licores" },
-    "rydd bord": { en: "Clear tables", es: "Recoger las mesas" },
-    "tørk bord": { en: "Wipe tables", es: "Limpiar las mesas" },
-    "sett på lys": { en: "Turn on lights", es: "Encender luces" },
-    "slå av lys": { en: "Turn off lights", es: "Apagar luces" },
-    "lås dør": { en: "Lock door", es: "Cerrar con llave la puerta" },
-    "lås døra": { en: "Lock the door", es: "Cerrar con llave la puerta" },
-    "åpne dør": { en: "Open door", es: "Abrir puerta" },
-    "sjekk toaletter": { en: "Check toilets", es: "Revisar los baños" },
-    "sjekk bar": { en: "Check bar", es: "Revisar la barra" },
-    "sjekk kjøkken": { en: "Check kitchen", es: "Revisar la cocina" },
-    "sjekk nødutganger": {
-      en: "Check emergency exits",
-      es: "Revisar salidas de emergencia",
-    },
-    "fyll såpe": { en: "Refill soap", es: "Rellenar jabón" },
-    "fyll papir": { en: "Refill paper", es: "Rellenar papel" },
-    "fyll toalettpapir": {
-      en: "Refill toilet paper",
-      es: "Rellenar papel higiénico",
-    },
-    "tøm oppvaskmaskin": {
-      en: "Empty dishwasher",
-      es: "Vaciar lavavajillas",
-    },
-    "start oppvaskmaskin": {
-      en: "Start dishwasher",
-      es: "Encender lavavajillas",
-    },
-    "rydd lager": { en: "Tidy storage", es: "Ordenar almacén" },
-    "vask bar": { en: "Clean bar", es: "Limpiar la barra" },
-    "steng bar": { en: "Close bar", es: "Cerrar la barra" },
-    "åpne bar": { en: "Open bar", es: "Abrir la barra" },
-  }
-
-  if (exactMap[normalized]) {
-    return {
-      no: original,
-      en: exactMap[normalized].en,
-      es: exactMap[normalized].es,
-    }
-  }
-
-  const contains = (value: string) => normalized.includes(value)
-
-  if (contains("is")) {
-    return {
-      no: original,
-      en: original.replace(/is/gi, "ice"),
-      es: original.replace(/is/gi, "hielo"),
-    }
-  }
-
-  if (contains("ovn")) {
-    return {
-      no: original,
-      en: original.replace(/ovn/gi, "oven"),
-      es: original.replace(/ovn/gi, "horno"),
-    }
-  }
-
-  if (contains("toalett")) {
-    return {
-      no: original,
-      en: original.replace(/toalett(er)?/gi, "toilet$1"),
-      es: original.replace(/toalett(er)?/gi, "baño"),
-    }
-  }
-
-  if (contains("bar")) {
-    return {
-      no: original,
-      en: original,
-      es: original.replace(/bar/gi, "barra"),
-    }
-  }
-
-  return {
-    no: original,
-    en: original,
-    es: original,
-  }
+  ru: {
+    title: "Управление задачами",
+    addTask: "Добавить задачу",
+    taskNamePlaceholder: "Название задачи",
+    chooseTaskType: "Выбрать тип задачи",
+    registrationMode: "Как должна регистрироваться задача?",
+    requiresPhoto: "Требуется фото",
+    requiresConfirmation: "Требуется подтверждение",
+    visibleDays: "Видна в эти дни",
+    allDays: "Каждый день",
+    reset: "Сбросить",
+    exampleImage: "Пример изображения",
+    add: "Добавить",
+    noTasksYet: "Задач пока нет",
+    delete: "Удалить",
+    deleting: "Удаление...",
+    drag: "Перетащить",
+    moving: "Перемещение...",
+    useDragToMove: "Используйте кнопку «Перетащить» для перемещения",
+    back: "Назад",
+    mustWriteTaskName: "Введите название задачи",
+    mustChooseTaskType: "Выберите тип задачи",
+    mustChooseAtLeastOneDay: "Выберите хотя бы один день",
+    mustChooseExampleImage: "Выберите изображение-пример",
+    savingTask: "Сохранение задачи...",
+    taskSaved: "Задача сохранена",
+    taskRemoved: "Задача удалена",
+    couldNotFetchTaskTypes: "Не удалось получить типы задач",
+    couldNotFetchTasks: "Не удалось получить задачи",
+    couldNotRemoveTask: "Не удалось удалить задачу",
+    couldNotUploadImage: "Не удалось загрузить изображение",
+    couldNotAddTask: "Не удалось добавить задачу",
+    couldNotSaveOrder: "Не удалось сохранить порядок",
+    orderSavedFor: "Порядок сохранён для",
+    fetchError: "Ошибка загрузки",
+    error: "Ошибка",
+    confirmDeleteStart: "Вы уверены, что хотите удалить задачу «",
+    confirmDeleteEnd: "»? Она будет отмечена как неактивная.",
+    allDaysLabel: "Каждый день",
+    dailyTasks: "Ежедневные задачи",
+    otherTasks: "Другие задачи",
+    moreTasks: "Ещё задачи",
+    unknownCategory: "Без категории",
+    monday: "Понедельник",
+    tuesday: "Вторник",
+    wednesday: "Среда",
+    thursday: "Четверг",
+    friday: "Пятница",
+    saturday: "Суббота",
+    sunday: "Воскресенье",
+    translating: "Перевод...",
+  },
 }
 
 function getTaskDisplayName(task: Task, language: UiLanguage) {
   if (language === "en") return task.name_en || task.name_no || task.name
   if (language === "es") return task.name_es || task.name_no || task.name
+  if (language === "ru") return task.name_ru || task.name_no || task.name
   return task.name_no || task.name
 }
 
@@ -518,7 +472,7 @@ export default function AdminOppgaverPage() {
   const router = useRouter()
   const { language } = useLanguage()
   const currentLanguage: UiLanguage =
-    language === "en" || language === "es" ? language : "no"
+    language === "en" || language === "es" || language === "ru" ? language : "no"
   const text = adminTaskTexts[currentLanguage]
 
   const [tasks, setTasks] = useState<Task[]>([])
@@ -533,6 +487,7 @@ export default function AdminOppgaverPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [sletterId, setSletterId] = useState<string | null>(null)
   const [flytterId, setFlytterId] = useState<string | null>(null)
+  const [retranslating, setRetranslating] = useState(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -629,7 +584,7 @@ export default function AdminOppgaverPage() {
       setFeil("")
 
       const res = await fetch(
-        `${url}/rest/v1/tasks?select=id,name,name_no,name_en,name_es,active,sort_order,list_id,image_url,requires_photo,show_monday,show_tuesday,show_wednesday,show_thursday,show_friday,show_saturday,show_sunday,task_lists!inner(id,name,venue_id)&task_lists.venue_id=eq.${selectedVenue}&order=list_id.asc,sort_order.asc,name.asc`,
+        `${url}/rest/v1/tasks?select=id,name,name_no,name_en,name_es,name_ru,active,sort_order,list_id,image_url,requires_photo,show_monday,show_tuesday,show_wednesday,show_thursday,show_friday,show_saturday,show_sunday,task_lists!inner(id,name,venue_id)&task_lists.venue_id=eq.${selectedVenue}&order=list_id.asc,sort_order.asc,name.asc`,
         {
           headers: {
             apikey: key,
@@ -769,6 +724,75 @@ export default function AdminOppgaverPage() {
     return høyeste + 1
   }
 
+  async function retranslateAllTasks() {
+    const selectedVenue = localStorage.getItem("selectedVenue")
+    if (!selectedVenue) return
+
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+    setRetranslating(true)
+    setFeil("")
+
+    const aktiveTasks = tasks.filter((t) => !!(t.name_no || t.name))
+    let ok = 0
+    let feilet = 0
+
+    for (let i = 0; i < aktiveTasks.length; i++) {
+      const task = aktiveTasks[i]
+      const sourceText = task.name_no || task.name
+
+      setStatus(`Oversetter ${i + 1} av ${aktiveTasks.length}...`)
+
+      try {
+        const translateRes = await fetch("/api/translate-task", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: sourceText, sourceLang: "auto" }),
+        })
+
+        if (!translateRes.ok) {
+          feilet++
+          // Vent litt ekstra ved feil (rate limit)
+          await new Promise((r) => setTimeout(r, 1500))
+          continue
+        }
+
+        const translated = await translateRes.json()
+
+        const patchRes = await fetch(`${url}/rest/v1/tasks?id=eq.${task.id}`, {
+          method: "PATCH",
+          headers: {
+            apikey: key,
+            Authorization: `Bearer ${key}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name_no: translated.name_no,
+            name_en: translated.name_en,
+            name_es: translated.name_es,
+            name_ru: translated.name_ru,
+          }),
+        })
+
+        if (patchRes.ok) {
+          ok++
+        } else {
+          feilet++
+        }
+      } catch {
+        feilet++
+      }
+
+      // Pause mellom hver forespørsel for å unngå DeepL rate limiting
+      await new Promise((r) => setTimeout(r, 500))
+    }
+
+    setRetranslating(false)
+    setStatus(`Ferdig: ${ok} oversatt${feilet > 0 ? `, ${feilet} feilet` : " ✓"}`)
+    loadTasks(selectedVenue)
+  }
+
   async function leggTilOppgave() {
     const selectedVenue = localStorage.getItem("selectedVenue")
 
@@ -800,10 +824,29 @@ export default function AdminOppgaverPage() {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     const nesteSortOrder = getNextSortOrderForList(valgtListeId)
-    const translated = autoTranslateTaskName(nyOppgave.trim())
 
     try {
       setFeil("")
+      setStatus(text.translating)
+
+      // Kall translate-API med riktig kildespråk basert på aktivt UI-språk
+      const translateRes = await fetch("/api/translate-task", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: nyOppgave.trim(),
+          sourceLang: currentLanguage,
+        }),
+      })
+
+      if (!translateRes.ok) {
+        setFeil(text.couldNotAddTask)
+        setStatus("")
+        return
+      }
+
+      const translated = await translateRes.json()
+
       setStatus(text.savingTask)
 
       const imageUrl = await uploadImageIfNeeded()
@@ -817,10 +860,11 @@ export default function AdminOppgaverPage() {
           Prefer: "return=representation",
         },
         body: JSON.stringify({
-          name: translated.no,
-          name_no: translated.no,
-          name_en: translated.en,
-          name_es: translated.es,
+          name: translated.name_no,
+          name_no: translated.name_no,
+          name_en: translated.name_en,
+          name_es: translated.name_es,
+          name_ru: translated.name_ru,
           list_id: valgtListeId,
           active: true,
           sort_order: nesteSortOrder,
@@ -1015,6 +1059,15 @@ export default function AdminOppgaverPage() {
       <div className="mx-auto max-w-md space-y-8">
         {feil && <p className="text-red-400">{feil}</p>}
         {status && <p className="text-green-400">{status}</p>}
+
+        <button
+          type="button"
+          onClick={retranslateAllTasks}
+          disabled={retranslating}
+          className="w-full rounded-xl bg-zinc-700 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
+        >
+          {retranslating ? "Oversetter..." : "🔄 Oversett alle eksisterende oppgaver på nytt"}
+        </button>
 
         <div className="rounded-2xl bg-zinc-900 p-4">
           <h2 className="mb-4 text-xl font-semibold">{text.addTask}</h2>

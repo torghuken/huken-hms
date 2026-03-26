@@ -56,6 +56,20 @@ export default function LanguageSwitcher() {
       >
         Español
       </button>
+
+      <button
+        onClick={() => setLanguage("ru")}
+        style={{
+          padding: "8px 14px",
+          borderRadius: "10px",
+          border: "1px solid #ccc",
+          background: "white",
+          color: "#000",
+          cursor: "pointer",
+        }}
+      >
+        Русский
+      </button>
     </div>
   )
 }
