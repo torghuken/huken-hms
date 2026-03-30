@@ -402,6 +402,7 @@ function SortableTaskCard({
   language: UiLanguage
   text: Record<string, string>
 }) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
   const {
     attributes,
     listeners,
@@ -464,18 +465,46 @@ function SortableTaskCard({
               {text.edit}
             </button>
 
-            <button
-              type="button"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => {
-                e.stopPropagation()
-                onDelete(task)
-              }}
-              disabled={flytterId === task.id || sletterId === task.id}
-              className="rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
-            >
-              {sletterId === task.id ? text.deleting : text.delete}
-            </button>
+            {confirmingDelete ? (
+              <>
+                <button
+                  type="button"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setConfirmingDelete(false)
+                    onDelete(task)
+                  }}
+                  className="rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white"
+                >
+                  ✓ {text.delete}
+                </button>
+                <button
+                  type="button"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setConfirmingDelete(false)
+                  }}
+                  className="rounded-lg bg-zinc-400 px-3 py-2 text-sm font-semibold text-white"
+                >
+                  ✕
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setConfirmingDelete(true)
+                }}
+                disabled={flytterId === task.id || sletterId === task.id}
+                className="rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {sletterId === task.id ? text.deleting : text.delete}
+              </button>
+            )}
 
             <button
               type="button"
@@ -648,13 +677,6 @@ export default function AdminOppgaverPage() {
 
   async function deleteTask(task: Task) {
     const displayName = getTaskDisplayName(task, currentLanguage)
-
-    const confirmed = window.confirm(
-      `${text.confirmDeleteStart}${displayName}${text.confirmDeleteEnd}`
-    )
-
-    if (!confirmed) return
-
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     const selectedVenue = localStorage.getItem("selectedVenue")
