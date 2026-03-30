@@ -10,7 +10,7 @@ type Venue = {
   slug: string
 }
 
-type UiLanguage = "no" | "en" | "es"
+type UiLanguage = "no" | "en" | "es" | "ru"
 
 const venuePageTexts: Record<
   UiLanguage,
@@ -39,6 +39,12 @@ const venuePageTexts: Record<
     fetchError: "Error de carga",
     noVenuesFound: "No se encontraron locales",
   },
+  ru: {
+    title: "Выбрать заведение",
+    couldNotFetchVenues: "Не удалось получить заведения",
+    fetchError: "Ошибка загрузки",
+    noVenuesFound: "Заведения не найдены",
+  },
 }
 
 export default function VelgStedPage() {
@@ -48,7 +54,7 @@ export default function VelgStedPage() {
   const { language } = useLanguage()
 
   const currentLanguage: UiLanguage =
-    language === "en" || language === "es" ? language : "no"
+    language === "en" || language === "es" || language === "ru" ? language : "no"
   const text = venuePageTexts[currentLanguage]
 
   useEffect(() => {

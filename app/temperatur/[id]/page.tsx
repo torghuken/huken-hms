@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useLanguage } from "@/lib/language"
 
-type UiLanguage = "no" | "en" | "es"
+type UiLanguage = "no" | "en" | "es" | "ru"
 
 const temperatureUnitTexts: Record<
   UiLanguage,
@@ -61,6 +61,19 @@ const temperatureUnitTexts: Record<
     titleFallback: "Temperatura",
     back: "Volver",
   },
+  ru: {
+    employee: "Сотрудник",
+    couldNotFetchUnit: "Не удалось получить единицу",
+    fetchUnitError: "Ошибка при получении единицы",
+    missingNameOrUnit: "Отсутствует имя или единица",
+    selectTemperatureFirst: "Сначала выберите температуру",
+    saving: "Сохранение...",
+    couldNotSave: "Не удалось сохранить",
+    saved: "Сохранено",
+    error: "Ошибка",
+    titleFallback: "Температура",
+    back: "Назад",
+  },
 }
 
 export default function TemperaturEnhetPage() {
@@ -68,7 +81,7 @@ export default function TemperaturEnhetPage() {
   const params = useParams()
   const { language } = useLanguage()
   const currentLanguage: UiLanguage =
-    language === "en" || language === "es" ? language : "no"
+    language === "en" || language === "es" || language === "ru" ? language : "no"
   const text = temperatureUnitTexts[currentLanguage]
   const unitId = params?.id as string
 

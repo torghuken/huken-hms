@@ -26,10 +26,12 @@ type Task = {
   name_no: string | null
   name_en: string | null
   name_es: string | null
+  name_ru: string | null
   active: boolean
   sort_order: number | null
   image_url: string | null
   requires_photo: boolean
+  is_monthly: boolean
   show_monday: boolean
   show_tuesday: boolean
   show_wednesday: boolean
@@ -71,6 +73,10 @@ function getSixHoursAgoIso() {
   return new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
 }
 
+function get21DaysAgoIso() {
+  return new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString()
+}
+
 function normalizeListName(name: string) {
   return name.trim().toLowerCase()
 }
@@ -93,21 +99,13 @@ function isClosingList(name: string) {
   )
 }
 
-function isOtherTasksList(name: string) {
-  const normalized = normalizeListName(name)
-  return (
-    normalized === "andre oppgaver" ||
-    normalized === "other tasks" ||
-    normalized === "otras tareas"
-  )
-}
-
 function getTaskDisplayName(
   task: Task,
-  language: "no" | "en" | "es"
+  language: string
 ) {
   if (language === "en") return task.name_en || task.name_no || task.name
   if (language === "es") return task.name_es || task.name_no || task.name
+  if (language === "ru") return task.name_ru || task.name_no || task.name
   return task.name_no || task.name
 }
 
@@ -294,10 +292,6 @@ export default function OppgavePage() {
       return t("opening")
     }
 
-    if (isOtherTasksList(name)) {
-      return t("otherTasks")
-    }
-
     if (isClosingList(name)) {
       return t("closing")
     }
@@ -318,7 +312,7 @@ export default function OppgavePage() {
 
       let query =
         `${url}/rest/v1/tasks?` +
-        `select=id,name,name_no,name_en,name_es,active,sort_order,image_url,requires_photo,show_monday,show_tuesday,show_wednesday,show_thursday,show_friday,show_saturday,show_sunday` +
+        `select=id,name,name_no,name_en,name_es,name_ru,active,sort_order,image_url,requires_photo,is_monthly,show_monday,show_tuesday,show_wednesday,show_thursday,show_friday,show_saturday,show_sunday` +
         `&list_id=eq.${taskListId}` +
         `&active=eq.true` +
         `&order=sort_order.asc,name.asc`
@@ -343,18 +337,37 @@ export default function OppgavePage() {
 
       const allTasks: Task[] = data
 
-      if (!hideListFor6Hours || allTasks.length === 0) {
+      if (allTasks.length === 0) {
         setTasks(allTasks)
         return
       }
 
-      const taskIds = allTasks.map((task) => task.id)
-      const sixHoursAgoIso = getSixHoursAgoIso()
+      const monthlyTasks = allTasks.filter((t) => t.is_monthly)
+      const regularTasks = allTasks.filter((t) => !t.is_monthly)
+
+      // Hent logs for månedlige oppgaver (alltid, uavhengig av hide_for_6_hours)
+      // Hent logs for vanlige oppgaver (kun hvis hide_for_6_hours er satt)
+      const needsLogCheck = monthlyTasks.length > 0 || hideListFor6Hours
+
+      if (!needsLogCheck) {
+        setTasks(allTasks)
+        return
+      }
+
+      const taskIdsToCheck: string[] = []
+      if (monthlyTasks.length > 0) {
+        monthlyTasks.forEach((t) => taskIdsToCheck.push(t.id))
+      }
+      if (hideListFor6Hours && regularTasks.length > 0) {
+        regularTasks.forEach((t) => taskIdsToCheck.push(t.id))
+      }
+
+      const oldestCutoff = monthlyTasks.length > 0 ? get21DaysAgoIso() : getSixHoursAgoIso()
 
       const logsQuery =
         `${url}/rest/v1/logs?select=task_id,created_at` +
-        `&task_id=in.(${taskIds.join(",")})` +
-        `&created_at=gte.${encodeURIComponent(sixHoursAgoIso)}` +
+        `&task_id=in.(${taskIdsToCheck.join(",")})` +
+        `&created_at=gte.${encodeURIComponent(oldestCutoff)}` +
         `&order=created_at.desc`
 
       const logsRes = await fetch(logsQuery, {
@@ -372,13 +385,33 @@ export default function OppgavePage() {
       }
 
       const recentLogs: RecentLog[] = logsData
-      const hiddenTaskIds = new Set(
+
+      // Månedlige oppgaver: skjul hvis utført siste 21 dager
+      const twentyOneDaysAgoIso = get21DaysAgoIso()
+      const monthlyHiddenIds = new Set(
         recentLogs
+          .filter((log) => log.created_at >= twentyOneDaysAgoIso)
+          .filter((log) => monthlyTasks.some((t) => t.id === log.task_id))
           .map((log) => log.task_id)
-          .filter((taskId): taskId is string => Boolean(taskId))
+          .filter((id): id is string => Boolean(id))
       )
 
-      const visibleTasks = allTasks.filter((task) => !hiddenTaskIds.has(task.id))
+      // Vanlige oppgaver: skjul hvis utført siste 6 timer (kun hvis hide_for_6_hours)
+      const sixHoursAgoIso = getSixHoursAgoIso()
+      const regularHiddenIds = hideListFor6Hours
+        ? new Set(
+            recentLogs
+              .filter((log) => log.created_at >= sixHoursAgoIso)
+              .filter((log) => regularTasks.some((t) => t.id === log.task_id))
+              .map((log) => log.task_id)
+              .filter((id): id is string => Boolean(id))
+          )
+        : new Set<string>()
+
+      const visibleTasks = allTasks.filter(
+        (task) =>
+          !monthlyHiddenIds.has(task.id) && !regularHiddenIds.has(task.id)
+      )
       setTasks(visibleTasks)
     } catch (err) {
       setFeil(`${t("fetchError")}: ${String(err)}`)

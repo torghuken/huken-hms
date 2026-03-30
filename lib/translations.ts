@@ -26,13 +26,13 @@ export const translations = {
     back: "Tilbake",
 
     opening: "Åpning",
-    otherTasks: "Andre oppgaver",
+    dailyTasks: "Daglige oppgaver",
     closing: "Stenging",
 
     errorLoading: "Kunne ikke laste",
     couldNotFetchTaskLists: "Kunne ikke hente oppgavelister",
     missingDefaultTaskLists:
-      "Fant ingen riktige oppgavelister for dette stedet. Sjekk at task_lists for valgt venue inneholder: Åpning, Andre oppgaver, Stenging",
+      "Fant ingen riktige oppgavelister for dette stedet. Sjekk at task_lists for valgt venue inneholder: Åpning, Stenging",
     fetchError: "Fetch-feil",
     missingSelectedVenue: "Fant ikke valgt sted",
     couldNotUpdateSetting: "Kunne ikke oppdatere innstilling",
@@ -95,13 +95,13 @@ export const translations = {
     back: "Back",
 
     opening: "Opening",
-    otherTasks: "Other tasks",
+    dailyTasks: "Daily tasks",
     closing: "Closing",
 
     errorLoading: "Could not load",
     couldNotFetchTaskLists: "Could not fetch task lists",
     missingDefaultTaskLists:
-      "Could not find the correct task lists for this venue. Check that task_lists for the selected venue contains: Åpning, Andre oppgaver, Stenging",
+      "Could not find the correct task lists for this venue. Check that task_lists for the selected venue contains: Åpning, Stenging",
     fetchError: "Fetch error",
     missingSelectedVenue: "Could not find selected venue",
     couldNotUpdateSetting: "Could not update setting",
@@ -165,13 +165,13 @@ export const translations = {
     back: "Volver",
 
     opening: "Apertura",
-    otherTasks: "Otras tareas",
+    dailyTasks: "Tareas diarias",
     closing: "Cierre",
 
     errorLoading: "No se pudo cargar",
     couldNotFetchTaskLists: "No se pudieron obtener las listas de tareas",
     missingDefaultTaskLists:
-      "No se encontraron las listas correctas para este local. Revisa que task_lists para el local seleccionado contenga: Åpning, Andre oppgaver, Stenging",
+      "No se encontraron las listas correctas para este local. Revisa que task_lists para el local seleccionado contenga: Åpning, Stenging",
     fetchError: "Error de carga",
     missingSelectedVenue: "No se encontró el local seleccionado",
     couldNotUpdateSetting: "No se pudo actualizar la configuración",
@@ -236,7 +236,7 @@ export const translations = {
     back: "Назад",
 
     opening: "Открытие",
-    otherTasks: "Другие задачи",
+    dailyTasks: "Ежедневные задачи",
     closing: "Закрытие",
 
     errorLoading: "Не удалось загрузить",

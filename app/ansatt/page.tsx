@@ -11,7 +11,7 @@ type Employee = {
   venue_id: string | null
 }
 
-type UiLanguage = "no" | "en" | "es"
+type UiLanguage = "no" | "en" | "es" | "ru"
 
 const employeePageTexts: Record<
   UiLanguage,
@@ -40,6 +40,12 @@ const employeePageTexts: Record<
     fetchError: "Error de carga",
     noEmployeesFound: "No se encontraron empleados",
   },
+  ru: {
+    title: "Выбрать сотрудника",
+    couldNotFetchEmployees: "Не удалось получить список сотрудников",
+    fetchError: "Ошибка загрузки",
+    noEmployeesFound: "Сотрудники не найдены",
+  },
 }
 
 export default function AnsattPage() {
@@ -49,7 +55,7 @@ export default function AnsattPage() {
   const { language } = useLanguage()
 
   const currentLanguage: UiLanguage =
-    language === "en" || language === "es" ? language : "no"
+    language === "en" || language === "es" || language === "ru" ? language : "no"
   const text = employeePageTexts[currentLanguage]
 
   useEffect(() => {

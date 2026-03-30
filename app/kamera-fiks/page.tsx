@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useLanguage } from "@/lib/language"
 
-type UiLanguage = "no" | "en" | "es"
+type UiLanguage = "no" | "en" | "es" | "ru"
 
 const fixCameraTexts: Record<
   UiLanguage,
@@ -73,13 +73,29 @@ const fixCameraTexts: Record<
     takePhoto: "Tomar foto",
     newPhoto: "Nueva foto",
   },
+  ru: {
+    employee: "Сотрудник",
+    title: "Это нужно исправить",
+    couldNotOpenCamera: "Не удалось открыть камеру",
+    mustTakePhotoFirst: "Сначала нужно сделать фото",
+    missingUser: "Отсутствует пользователь",
+    uploadingImage: "Загрузка изображения...",
+    couldNotUploadImage: "Не удалось загрузить изображение",
+    couldNotSaveLog: "Не удалось сохранить журнал",
+    error: "Ошибка",
+    preview: "Предпросмотр",
+    whatNeedsFixing: "Что нужно исправить?",
+    save: "Сохранить",
+    takePhoto: "Сфотографировать",
+    newPhoto: "Новое фото",
+  },
 }
 
 export default function KameraFiksPage() {
   const router = useRouter()
   const { language } = useLanguage()
   const currentLanguage: UiLanguage =
-    language === "en" || language === "es" ? language : "no"
+    language === "en" || language === "es" || language === "ru" ? language : "no"
   const text = fixCameraTexts[currentLanguage]
 
   const videoRef = useRef<HTMLVideoElement>(null)

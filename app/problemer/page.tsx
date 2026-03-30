@@ -15,23 +15,27 @@ export default function ProblemerPage() {
   const [feil, setFeil] = useState("")
 
   useEffect(() => {
-    loadLogs()
+    const selectedVenue = localStorage.getItem("selectedVenue")
+    if (selectedVenue) {
+      loadLogs(selectedVenue)
+    } else {
+      loadLogs(null)
+    }
   }, [])
 
-  async function loadLogs() {
+  async function loadLogs(venueId: string | null) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
     try {
-      const res = await fetch(
-        `${url}/rest/v1/logs?select=id,comment,image_url,created_at,status&order=created_at.desc`,
-        {
-          headers: {
-            apikey: key,
-            Authorization: `Bearer ${key}`,
-          },
-        }
-      )
+      let query = `${url}/rest/v1/logs?select=id,comment,image_url,created_at,status,employees(venue_id)&order=created_at.desc`
+
+      const res = await fetch(query, {
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+        },
+      })
 
       const data = await res.json()
 
@@ -40,7 +44,14 @@ export default function ProblemerPage() {
         return
       }
 
-      setLogs(data)
+      // Filtrer på venue hvis valgt
+      const filtered = venueId
+        ? data.filter((log: Log & { employees?: { venue_id?: string } | null }) =>
+            log.employees?.venue_id === venueId
+          )
+        : data
+
+      setLogs(filtered)
     } catch (err) {
       setFeil(String(err))
     }
@@ -62,7 +73,8 @@ export default function ProblemerPage() {
       }),
     })
 
-    loadLogs()
+    const selectedVenue = localStorage.getItem("selectedVenue")
+    loadLogs(selectedVenue)
   }
 
   const open = logs.filter((l) => l.status !== "fixed")

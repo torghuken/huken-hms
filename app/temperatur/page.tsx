@@ -29,7 +29,7 @@ type TemperatureUnit = {
   image_url?: string | null
 }
 
-type UiLanguage = "no" | "en" | "es"
+type UiLanguage = "no" | "en" | "es" | "ru"
 
 const temperaturePageTexts: Record<
   UiLanguage,
@@ -86,6 +86,19 @@ const temperaturePageTexts: Record<
       'Admin: usa el botón "Arrastrar" arriba a la derecha para cambiar el orden.',
     noUnitsFound: "No se encontraron unidades",
     back: "Volver",
+  },
+  ru: {
+    moving: "Перемещение...",
+    drag: "Перетащить",
+    couldNotFetchUnits: "Не удалось получить единицы",
+    fetchError: "Ошибка загрузки",
+    couldNotSaveOrder: "Не удалось сохранить порядок",
+    orderSaved: "Порядок сохранён",
+    error: "Ошибка",
+    title: "Контроль температуры",
+    adminHelp: 'Админ: используйте кнопку "Перетащить" справа вверху для изменения порядка.',
+    noUnitsFound: "Единицы не найдены",
+    back: "Назад",
   },
 }
 
@@ -161,7 +174,7 @@ export default function TemperaturPage() {
   const router = useRouter()
   const { language } = useLanguage()
   const currentLanguage: UiLanguage =
-    language === "en" || language === "es" ? language : "no"
+    language === "en" || language === "es" || language === "ru" ? language : "no"
   const text = temperaturePageTexts[currentLanguage]
 
   const [units, setUnits] = useState<TemperatureUnit[]>([])

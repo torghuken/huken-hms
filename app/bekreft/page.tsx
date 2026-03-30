@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useLanguage } from "@/lib/language"
 
-type UiLanguage = "no" | "en" | "es"
+type UiLanguage = "no" | "en" | "es" | "ru"
 
 const confirmTexts: Record<
   UiLanguage,
@@ -49,13 +49,23 @@ const confirmTexts: Record<
     taskExampleImage: "Imagen de ejemplo de la tarea",
     confirm: "Confirmar",
   },
+  ru: {
+    employee: "Сотрудник",
+    missingNameOrTask: "Отсутствует имя или задача",
+    saving: "Сохранение...",
+    done: "Готово",
+    couldNotSave: "Не удалось сохранить",
+    error: "Ошибка",
+    taskExampleImage: "Пример изображения задачи",
+    confirm: "Подтвердить",
+  },
 }
 
 export default function BekreftPage() {
   const router = useRouter()
   const { language } = useLanguage()
   const currentLanguage: UiLanguage =
-    language === "en" || language === "es" ? language : "no"
+    language === "en" || language === "es" || language === "ru" ? language : "no"
   const text = confirmTexts[currentLanguage]
 
   const [ansatt, setAnsatt] = useState("")

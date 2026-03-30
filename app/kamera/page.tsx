@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useLanguage } from "@/lib/language"
 
-type UiLanguage = "no" | "en" | "es"
+type UiLanguage = "no" | "en" | "es" | "ru"
 
 const cameraTexts: Record<
   UiLanguage,
@@ -73,13 +73,29 @@ const cameraTexts: Record<
     takePhoto: "Tomar foto",
     newPhoto: "Nueva foto",
   },
+  ru: {
+    employee: "Сотрудник",
+    couldNotOpenCamera: "Не удалось открыть камеру",
+    mustTakePhotoFirst: "Сначала нужно сделать фото",
+    missingNameOrTask: "Отсутствует имя или задача",
+    uploadingImage: "Загрузка изображения...",
+    couldNotUploadImage: "Не удалось загрузить изображение",
+    couldNotSaveLog: "Не удалось сохранить журнал",
+    error: "Ошибка",
+    preview: "Предпросмотр",
+    taskExampleImage: "Пример изображения задачи",
+    writeSomething: "Хотите что-нибудь написать?",
+    save: "Сохранить",
+    takePhoto: "Сфотографировать",
+    newPhoto: "Новое фото",
+  },
 }
 
 export default function KameraPage() {
   const router = useRouter()
   const { language } = useLanguage()
   const currentLanguage: UiLanguage =
-    language === "en" || language === "es" ? language : "no"
+    language === "en" || language === "es" || language === "ru" ? language : "no"
   const text = cameraTexts[currentLanguage]
 
   const videoRef = useRef<HTMLVideoElement>(null)

@@ -22,7 +22,7 @@ type GroupedLogs = {
   items: TemperatureLogItem[]
 }
 
-type UiLanguage = "no" | "en" | "es"
+type UiLanguage = "no" | "en" | "es" | "ru"
 
 const temperatureTexts: Record<
   UiLanguage,
@@ -71,13 +71,24 @@ const temperatureTexts: Record<
     registration: "Registro",
     back: "Volver",
   },
+  ru: {
+    title: "Контроль температуры",
+    couldNotFetch: "Не удалось получить данные температуры",
+    fetchError: "Ошибка загрузки",
+    registrations: "регистрации",
+    unknownUnit: "Неизвестная единица",
+    unknown: "Неизвестно",
+    noRegistrations: "Регистрации не найдены",
+    registration: "Регистрация",
+    back: "Назад",
+  },
 }
 
 export default function TemperaturLoggPage() {
   const router = useRouter()
   const { language } = useLanguage()
   const currentLanguage: UiLanguage =
-    language === "en" || language === "es" ? language : "no"
+    language === "en" || language === "es" || language === "ru" ? language : "no"
   const text = temperatureTexts[currentLanguage]
 
   const [groups, setGroups] = useState<GroupedLogs[]>([])

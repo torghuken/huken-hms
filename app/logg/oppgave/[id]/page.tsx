@@ -20,9 +20,10 @@ type TaskInfo = {
   name_no?: string | null
   name_en?: string | null
   name_es?: string | null
+  name_ru?: string | null
 }
 
-type UiLanguage = "no" | "en" | "es"
+type UiLanguage = "no" | "en" | "es" | "ru"
 
 const taskHistoryTexts: Record<
   UiLanguage,
@@ -63,15 +64,25 @@ const taskHistoryTexts: Record<
     registration: "Registro",
     noHistoryYet: "Aún no hay historial",
   },
+  ru: {
+    history: "История",
+    fullHistory: "Полная история",
+    taskNotFoundForVenue: "Задача не найдена для выбранного места",
+    couldNotFetchHistory: "Не удалось получить историю",
+    unknown: "Неизвестно",
+    registration: "Регистрация",
+    noHistoryYet: "История пока отсутствует",
+  },
 }
 
 function getTaskDisplayName(
   task: TaskInfo | null,
-  language: "no" | "en" | "es"
+  language: "no" | "en" | "es" | "ru"
 ) {
   if (!task) return ""
   if (language === "en") return task.name_en || task.name_no || task.name
   if (language === "es") return task.name_es || task.name_no || task.name
+  if (language === "ru") return task.name_ru || task.name_no || task.name
   return task.name_no || task.name
 }
 
@@ -80,7 +91,7 @@ export default function OppgaveHistorikkPage() {
   const params = useParams()
   const { t, language } = useLanguage()
   const currentLanguage: UiLanguage =
-    language === "en" || language === "es" ? language : "no"
+    language === "en" || language === "es" || language === "ru" ? language : "no"
   const text = taskHistoryTexts[currentLanguage]
   const taskId = params?.id as string
 
@@ -121,7 +132,7 @@ export default function OppgaveHistorikkPage() {
       setFeil("")
 
       const taskRes = await fetch(
-        `${url}/rest/v1/tasks?select=id,name,name_no,name_en,name_es,list_id,task_lists!inner(id,name,venue_id)&id=eq.${taskId}&task_lists.venue_id=eq.${selectedVenue}`,
+        `${url}/rest/v1/tasks?select=id,name,name_no,name_en,name_es,name_ru,list_id,task_lists!inner(id,name,venue_id)&id=eq.${taskId}&task_lists.venue_id=eq.${selectedVenue}`,
         {
           headers: {
             apikey: key,
@@ -143,6 +154,7 @@ export default function OppgaveHistorikkPage() {
         name_no: taskData[0].name_no,
         name_en: taskData[0].name_en,
         name_es: taskData[0].name_es,
+        name_ru: taskData[0].name_ru,
       })
 
       const logRes = await fetch(

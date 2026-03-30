@@ -18,6 +18,7 @@ type LogItem = {
     name_no?: string | null
     name_en?: string | null
     name_es?: string | null
+    name_ru?: string | null
   } | null
 }
 
@@ -26,7 +27,7 @@ type GroupedLogs = {
   items: LogItem[]
 }
 
-type UiLanguage = "no" | "en" | "es"
+type UiLanguage = "no" | "en" | "es" | "ru"
 
 const dailyLogTexts: Record<
   UiLanguage,
@@ -71,6 +72,16 @@ const dailyLogTexts: Record<
     registration: "Registro",
     noRegistrationsFound: "No se encontraron registros",
   },
+  ru: {
+    title: "Ежедневные задачи",
+    registrations: "регистрации",
+    notFoundForVenue: "не найдено для выбранного места",
+    logSuffix: "журнал",
+    unknownTask: "Неизвестная задача",
+    unknown: "Неизвестно",
+    registration: "Регистрация",
+    noRegistrationsFound: "Регистрации не найдены",
+  },
 }
 
 function normalizeListName(name: string) {
@@ -88,11 +99,12 @@ function isDailyTasksList(name: string) {
 
 function getTaskDisplayName(
   task: LogItem["tasks"],
-  language: "no" | "en" | "es"
+  language: "no" | "en" | "es" | "ru"
 ) {
   if (!task) return ""
   if (language === "en") return task.name_en || task.name_no || task.name
   if (language === "es") return task.name_es || task.name_no || task.name
+  if (language === "ru") return task.name_ru || task.name_no || task.name
   return task.name_no || task.name
 }
 
@@ -100,7 +112,7 @@ export default function DagligeLoggPage() {
   const router = useRouter()
   const { t, language } = useLanguage()
   const currentLanguage: UiLanguage =
-    language === "en" || language === "es" ? language : "no"
+    language === "en" || language === "es" || language === "ru" ? language : "no"
   const text = dailyLogTexts[currentLanguage]
 
   const [groups, setGroups] = useState<GroupedLogs[]>([])
@@ -170,7 +182,7 @@ export default function DagligeLoggPage() {
       const listId = dailyList.id
 
       const taskRes = await fetch(
-        `${url}/rest/v1/tasks?select=id,name,name_no,name_en,name_es,list_id,task_lists!inner(id,name,venue_id)&list_id=eq.${listId}&task_lists.venue_id=eq.${selectedVenue}`,
+        `${url}/rest/v1/tasks?select=id,name,name_no,name_en,name_es,name_ru,list_id,task_lists!inner(id,name,venue_id)&list_id=eq.${listId}&task_lists.venue_id=eq.${selectedVenue}`,
         {
           headers: {
             apikey: key,
@@ -194,7 +206,7 @@ export default function DagligeLoggPage() {
       const taskIds = taskData.map((task: { id: string }) => task.id).join(",")
 
       const logRes = await fetch(
-        `${url}/rest/v1/logs?select=id,comment,image_url,created_at,task_id,employees(name),tasks(name,name_no,name_en,name_es)&task_id=in.(${taskIds})&order=created_at.desc`,
+        `${url}/rest/v1/logs?select=id,comment,image_url,created_at,task_id,employees(name),tasks(name,name_no,name_en,name_es,name_ru)&task_id=in.(${taskIds})&order=created_at.desc`,
         {
           headers: {
             apikey: key,

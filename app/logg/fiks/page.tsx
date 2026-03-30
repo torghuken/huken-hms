@@ -22,7 +22,7 @@ type GroupedLogs = {
   items: FixLogItem[]
 }
 
-type UiLanguage = "no" | "en" | "es"
+type UiLanguage = "no" | "en" | "es" | "ru"
 
 const fixTexts: Record<
   UiLanguage,
@@ -119,13 +119,36 @@ const fixTexts: Record<
     noCompletedItems: "Aún no hay elementos completados",
     back: "Volver",
   },
+  ru: {
+    title: "Это нужно исправить",
+    open: "Открытые",
+    completed: "Выполненные",
+    couldNotFetchLog: "Не удалось получить журнал",
+    fetchError: "Ошибка загрузки",
+    markingDone: "Отмечаем как выполненное...",
+    couldNotUpdateStatus: "Не удалось обновить статус",
+    movedToCompleted: "Задача перемещена в Выполненные",
+    openCount: "открытых",
+    completedCount: "выполненных",
+    reportedBy: "Сообщено",
+    reported: "Сообщено",
+    completedAt: "Выполнено",
+    unknown: "Неизвестно",
+    noText: "Нет текста",
+    registration: "Регистрация",
+    markCompleted: "Выполнено",
+    completedLabel: "✔ Выполнено",
+    noOpenItems: "Нет открытых элементов",
+    noCompletedItems: "Пока нет выполненных элементов",
+    back: "Назад",
+  },
 }
 
 export default function FiksLoggPage() {
   const router = useRouter()
   const { language } = useLanguage()
   const currentLanguage: UiLanguage =
-    language === "en" || language === "es" ? language : "no"
+    language === "en" || language === "es" || language === "ru" ? language : "no"
   const text = fixTexts[currentLanguage]
 
   const [items, setItems] = useState<FixLogItem[]>([])

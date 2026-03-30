@@ -25,12 +25,13 @@ function isOpeningList(name: string) {
   )
 }
 
-function isOtherTasksList(name: string) {
+function isDailyTasksList(name: string) {
   const normalized = normalizeListName(name)
   return (
-    normalized === "andre oppgaver" ||
-    normalized === "other tasks" ||
-    normalized === "otras tareas"
+    normalized === "daglige oppgaver" ||
+    normalized === "daily tasks" ||
+    normalized === "tareas diarias" ||
+    normalized === "ежедневные задачи"
   )
 }
 
@@ -79,14 +80,14 @@ export default function OppgavevalgPage() {
 
   function getListSortOrder(name: string) {
     if (isOpeningList(name)) return 0
-    if (isOtherTasksList(name)) return 1
+    if (isDailyTasksList(name)) return 1
     if (isClosingList(name)) return 2
     return 999
   }
 
   function getTranslatedTaskListName(name: string) {
     if (isOpeningList(name)) return t("opening")
-    if (isOtherTasksList(name)) return t("otherTasks")
+    if (isDailyTasksList(name)) return t("dailyTasks")
     if (isClosingList(name)) return t("closing")
     return name
   }
@@ -120,7 +121,7 @@ export default function OppgavevalgPage() {
         .filter(
           (list) =>
             isOpeningList(list.name) ||
-            isOtherTasksList(list.name) ||
+            isDailyTasksList(list.name) ||
             isClosingList(list.name)
         )
         .sort((a, b) => getListSortOrder(a.name) - getListSortOrder(b.name))
