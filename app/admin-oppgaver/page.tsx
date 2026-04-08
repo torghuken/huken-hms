@@ -114,7 +114,9 @@ const adminTaskTexts: Record<
     confirmDeleteStart: string
     confirmDeleteEnd: string
     allDaysLabel: string
+    opening: string
     dailyTasks: string
+    closing: string
     otherTasks: string
     moreTasks: string
     unknownCategory: string
@@ -172,7 +174,9 @@ const adminTaskTexts: Record<
     confirmDeleteStart: 'Er du sikker på at du vil fjerne oppgaven "',
     confirmDeleteEnd: '"? Den blir satt som inaktiv.',
     allDaysLabel: "Alle dager",
+    opening: "Åpning",
     dailyTasks: "Daglige oppgaver",
+    closing: "Stenging",
     otherTasks: "Andre oppgaver",
     moreTasks: "Flere oppgaver",
     unknownCategory: "Uten kategori",
@@ -229,7 +233,9 @@ const adminTaskTexts: Record<
     confirmDeleteStart: 'Are you sure you want to remove the task "',
     confirmDeleteEnd: '"? It will be set as inactive.',
     allDaysLabel: "Every day",
+    opening: "Opening",
     dailyTasks: "Daily tasks",
+    closing: "Closing",
     otherTasks: "Other tasks",
     moreTasks: "More tasks",
     unknownCategory: "Uncategorized",
@@ -286,7 +292,9 @@ const adminTaskTexts: Record<
     confirmDeleteStart: '¿Seguro que quieres eliminar la tarea "',
     confirmDeleteEnd: '"? Se marcará como inactiva.',
     allDaysLabel: "Todos los días",
+    opening: "Apertura",
     dailyTasks: "Tareas diarias",
+    closing: "Cierre",
     otherTasks: "Otras tareas",
     moreTasks: "Más tareas",
     unknownCategory: "Sin categoría",
@@ -343,7 +351,9 @@ const adminTaskTexts: Record<
     confirmDeleteStart: "Вы уверены, что хотите удалить задачу «",
     confirmDeleteEnd: "»? Она будет отмечена как неактивная.",
     allDaysLabel: "Каждый день",
+    opening: "Открытие",
     dailyTasks: "Ежедневные задачи",
+    closing: "Закрытие",
     otherTasks: "Другие задачи",
     moreTasks: "Ещё задачи",
     unknownCategory: "Без категории",
@@ -373,12 +383,20 @@ function getTaskDisplayName(task: Task, language: UiLanguage) {
 function getTaskListDisplayName(name: string, text: Record<string, string>) {
   const normalized = name.trim().toLowerCase()
 
+  if (normalized === "åpning" || normalized === "opening" || normalized === "apertura") {
+    return text.opening
+  }
+
   if (
     normalized === "daglige oppgaver" ||
     normalized === "daily tasks" ||
     normalized === "tareas diarias"
   ) {
     return text.dailyTasks
+  }
+
+  if (normalized === "stenging" || normalized === "closing" || normalized === "cierre") {
+    return text.closing
   }
 
   if (
@@ -1141,69 +1159,95 @@ export default function AdminOppgaverPage() {
     }
   }
 
-  const dagligeOppgaver = getTasksForList("Daglige oppgaver")
-  const andreOppgaver = getTasksForList("Andre oppgaver")
+  function isListMatch(taskListName: string | undefined, target: string) {
+    const n = (taskListName || "").trim().toLowerCase()
+    return n === target.toLowerCase()
+  }
 
+  const apningOppgaver = tasks
+    .filter((t) => t.active && isListMatch(t.task_lists?.name, "Åpning"))
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+
+  const dagligeOppgaver = tasks
+    .filter((t) => t.active && isListMatch(t.task_lists?.name, "Daglige oppgaver"))
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+
+  const stengingOppgaver = tasks
+    .filter((t) => t.active && isListMatch(t.task_lists?.name, "Stenging"))
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+
+  const andreOppgaver = tasks
+    .filter((t) => t.active && isListMatch(t.task_lists?.name, "Andre oppgaver"))
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+
+  const knownNames = new Set(["åpning", "daglige oppgaver", "stenging", "andre oppgaver"])
   const andreListerOppgaver = tasks
     .filter(
       (task) =>
         task.active &&
-        task.task_lists?.name !== "Daglige oppgaver" &&
-        task.task_lists?.name !== "Andre oppgaver"
+        !knownNames.has((task.task_lists?.name || "").trim().toLowerCase())
     )
     .sort((a, b) => {
-      const aOrder = Number(a.sort_order ?? 0)
-      const bOrder = Number(b.sort_order ?? 0)
-
       if (a.task_lists?.name !== b.task_lists?.name) {
         return (a.task_lists?.name || "").localeCompare(b.task_lists?.name || "")
       }
-
-      if (aOrder !== bOrder) return aOrder - bOrder
-
-      return getTaskDisplayName(a, currentLanguage).localeCompare(
-        getTaskDisplayName(b, currentLanguage)
-      )
+      return (a.sort_order ?? 0) - (b.sort_order ?? 0)
     })
 
-  function renderSortableSection(title: string, sectionTasks: Task[]) {
+  function CollapsibleSection({ title, sectionTasks }: { title: string; sectionTasks: Task[] }) {
+    const [open, setOpen] = useState(false)
+
     return (
       <div>
-        <h2 className="mb-3 text-xl font-semibold">
-          {getTaskListDisplayName(title, text)}
-        </h2>
-
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={(event) => handleDragEndForList(title, event)}
+        <button
+          type="button"
+          onClick={() => setOpen((prev) => !prev)}
+          className="flex w-full items-center justify-between rounded-2xl bg-zinc-800 px-5 py-4 text-left transition active:scale-[0.98]"
         >
-          <SortableContext
-            items={sectionTasks.map((task) => task.id)}
-            strategy={verticalListSortingStrategy}
-          >
-            <div className="space-y-3">
-              {sectionTasks.length === 0 && (
-                <div className="rounded-xl bg-zinc-900 p-4 text-zinc-300">
-                  {text.noTasksYet}
-                </div>
-              )}
+          <span className="text-lg font-semibold">
+            {getTaskListDisplayName(title, text)}
+            <span className="ml-2 text-sm font-normal text-zinc-400">
+              ({sectionTasks.length})
+            </span>
+          </span>
+          <span className="text-2xl text-zinc-400">{open ? "−" : "+"}</span>
+        </button>
 
-              {sectionTasks.map((task) => (
-                <SortableTaskCard
-                  key={task.id}
-                  task={task}
-                  flytterId={flytterId}
-                  sletterId={sletterId}
-                  onDelete={deleteTask}
-                  onEdit={startEditing}
-                  language={currentLanguage}
-                  text={text}
-                />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
+        {open && (
+          <div className="mt-3">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={(event) => handleDragEndForList(title, event)}
+            >
+              <SortableContext
+                items={sectionTasks.map((task) => task.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="space-y-3">
+                  {sectionTasks.length === 0 && (
+                    <div className="rounded-xl bg-zinc-900 p-4 text-zinc-300">
+                      {text.noTasksYet}
+                    </div>
+                  )}
+
+                  {sectionTasks.map((task) => (
+                    <SortableTaskCard
+                      key={task.id}
+                      task={task}
+                      flytterId={flytterId}
+                      sletterId={sletterId}
+                      onDelete={deleteTask}
+                      onEdit={startEditing}
+                      language={currentLanguage}
+                      text={text}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          </div>
+        )}
       </div>
     )
   }
@@ -1368,8 +1412,10 @@ export default function AdminOppgaverPage() {
           </div>
         </div>
 
-        {renderSortableSection("Daglige oppgaver", dagligeOppgaver)}
-        {renderSortableSection("Andre oppgaver", andreOppgaver)}
+        <CollapsibleSection title="Åpning" sectionTasks={apningOppgaver} />
+        <CollapsibleSection title="Daglige oppgaver" sectionTasks={dagligeOppgaver} />
+        <CollapsibleSection title="Stenging" sectionTasks={stengingOppgaver} />
+        <CollapsibleSection title="Andre oppgaver" sectionTasks={andreOppgaver} />
 
         {andreListerOppgaver.length > 0 && (
           <div>
@@ -1389,7 +1435,7 @@ export default function AdminOppgaverPage() {
 
                 return (
                   <div key={listName}>
-                    {renderSortableSection(listName, sectionTasks)}
+                    <CollapsibleSection title={listName} sectionTasks={sectionTasks} />
                   </div>
                 )
               })}
