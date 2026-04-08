@@ -114,7 +114,9 @@ function SortableTaskCard({
   flytterId,
   onOpen,
   onDelete,
+  onEdit,
   deleteLabel,
+  editLabel,
   dragLabel,
   movingLabel,
   displayName,
@@ -123,7 +125,9 @@ function SortableTaskCard({
   flytterId: string | null
   onOpen: (task: Task) => void
   onDelete: (task: Task) => void
+  onEdit: (task: Task) => void
   deleteLabel: string
+  editLabel: string
   dragLabel: string
   movingLabel: string
   displayName: string
@@ -163,6 +167,18 @@ function SortableTaskCard({
           <span className="text-lg font-semibold">{displayName}</span>
 
           <div className="flex flex-shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation()
+                onEdit(task)
+              }}
+              className="rounded-lg bg-blue-500 px-3 py-2 text-sm font-semibold text-white"
+            >
+              {editLabel}
+            </button>
+
             {confirmingDelete ? (
               <>
                 <button
@@ -583,7 +599,12 @@ export default function OppgavePage() {
                     flytterId={flytterId}
                     onOpen={velgOppgave}
                     onDelete={slettOppgave}
+                    onEdit={(task) => {
+                      localStorage.setItem("editTaskId", task.id)
+                      router.push("/admin-oppgaver")
+                    }}
                     deleteLabel={t("delete")}
+                    editLabel={t("edit")}
                     dragLabel={t("drag")}
                     movingLabel={t("moving")}
                     displayName={getTaskDisplayName(task, language)}

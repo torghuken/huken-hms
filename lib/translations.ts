@@ -57,6 +57,7 @@ export const translations = {
     noTasksToday: "Ingen oppgaver i dag",
     noTasksFound: "Fant ingen oppgaver",
     delete: "Slett",
+    edit: "Rediger",
     drag: "Dra",
     moving: "Flytter...",
 
@@ -127,6 +128,7 @@ export const translations = {
     noTasksToday: "No tasks today",
     noTasksFound: "No tasks found",
     delete: "Delete",
+    edit: "Edit",
     drag: "Drag",
     moving: "Moving...",
 
@@ -198,6 +200,7 @@ export const translations = {
     noTasksToday: "No hay tareas hoy",
     noTasksFound: "No se encontraron tareas",
     delete: "Eliminar",
+    edit: "Editar",
     drag: "Arrastrar",
     moving: "Moviendo...",
 
@@ -268,6 +271,7 @@ export const translations = {
     noTasksToday: "Нет задач на сегодня",
     noTasksFound: "Задачи не найдены",
     delete: "Удалить",
+    edit: "Редактировать",
     drag: "Перетащить",
     moving: "Перемещение...",
 
