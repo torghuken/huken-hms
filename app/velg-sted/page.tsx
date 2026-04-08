@@ -95,33 +95,28 @@ export default function VelgStedPage() {
   }
 
   return (
-    <main style={{ padding: 40 }}>
-      <h1>{text.title}</h1>
+    <main className="min-h-screen bg-black px-6 pt-20 text-white">
+      <div className="mx-auto flex max-w-md flex-col items-center">
+        <h1 className="mb-12 text-3xl font-bold">{text.title}</h1>
 
-      {feil && <p style={{ color: "red" }}>{feil}</p>}
+        {feil && <p className="mb-4 text-red-400">{feil}</p>}
 
-      {venues.map((venue) => (
-        <button
-          key={venue.id}
-          onClick={() => velgSted(venue)}
-          style={{
-            display: "block",
-            margin: "12px 0",
-            padding: "18px 24px",
-            fontSize: "20px",
-            borderRadius: "12px",
-            border: "1px solid #ccc",
-            cursor: "pointer",
-            minWidth: "220px",
-            textAlign: "left",
-            background: "white",
-          }}
-        >
-          {venue.name}
-        </button>
-      ))}
+        <div className="flex w-full flex-col items-center gap-5">
+          {venues.map((venue) => (
+            <button
+              key={venue.id}
+              onClick={() => velgSted(venue)}
+              className="h-20 w-[90%] rounded-2xl bg-white text-xl font-semibold text-black shadow-lg transition active:scale-95"
+            >
+              {venue.name}
+            </button>
+          ))}
+        </div>
 
-      {venues.length === 0 && !feil && <p>{text.noVenuesFound}</p>}
+        {venues.length === 0 && !feil && (
+          <p className="mt-8 text-zinc-400">{text.noVenuesFound}</p>
+        )}
+      </div>
     </main>
   )
 }

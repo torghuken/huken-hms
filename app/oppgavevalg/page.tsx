@@ -48,7 +48,6 @@ export default function OppgavevalgPage() {
   const [taskLists, setTaskLists] = useState<TaskList[]>([])
   const [feil, setFeil] = useState("")
   const [status, setStatus] = useState("")
-  const [ansatt, setAnsatt] = useState("")
   const [leader, setLeader] = useState(false)
   const [lagrerId, setLagrerId] = useState<string | null>(null)
 
@@ -58,7 +57,6 @@ export default function OppgavevalgPage() {
   useEffect(() => {
     const selectedVenue = localStorage.getItem("selectedVenue")
     const selectedEmployeeId = localStorage.getItem("selectedEmployeeId")
-    const selectedEmployeeName = localStorage.getItem("selectedEmployeeName")
 
     if (!selectedVenue) {
       router.replace("/velg-sted")
@@ -68,10 +66,6 @@ export default function OppgavevalgPage() {
     if (!selectedEmployeeId) {
       router.replace("/ansatt")
       return
-    }
-
-    if (selectedEmployeeName) {
-      setAnsatt(selectedEmployeeName)
     }
 
     setLeader(isLeader())
@@ -205,129 +199,62 @@ export default function OppgavevalgPage() {
     }
   }
 
-  function gåTilAdminOppgaver() {
-    router.push("/admin-oppgaver")
-  }
-
-  function tilbake() {
-    router.push("/")
-  }
-
   return (
-    <main style={{ padding: 40 }}>
-      <h1>{t("chooseTaskType")}</h1>
+    <main className="min-h-screen bg-black px-6 pt-20 text-white">
+      <div className="mx-auto flex max-w-md flex-col items-center">
+        <h1 className="mb-12 text-3xl font-bold">{t("chooseTaskType")}</h1>
 
-      {ansatt && (
-        <p>
-          {t("employee")}: {ansatt}
-        </p>
-      )}
+        {status && <p className="mb-4 text-green-400">{status}</p>}
+        {feil && <p className="mb-4 text-red-400">{feil}</p>}
 
-      {leader && (
-        <p>
-          {t("role")}: {t("leader")}
-        </p>
-      )}
-
-      {status && <p style={{ color: "green" }}>{status}</p>}
-      {feil && <p style={{ color: "red" }}>{feil}</p>}
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {taskLists.map((list) => (
-          <div
-            key={list.id}
-            style={{
-              display: "flex",
-              alignItems: "stretch",
-              gap: 12,
-              flexWrap: "wrap",
-            }}
-          >
-            <button
-              onClick={() => velgListe(list)}
-              style={{
-                display: "block",
-                padding: "18px 24px",
-                fontSize: "20px",
-                borderRadius: "12px",
-                border: "1px solid #ccc",
-                cursor: "pointer",
-                minWidth: "280px",
-                textAlign: "left",
-                background: "white",
-                color: "#000",
-                flex: "1 1 280px",
-              }}
-            >
-              {getTranslatedTaskListName(list.name)}
-            </button>
-
-            {leader && (
+        <div className="flex w-full flex-col items-center gap-5">
+          {taskLists.map((list) => (
+            <div key={list.id} className="flex w-[90%] items-stretch gap-3">
               <button
-                type="button"
-                onClick={() => toggleHideMode(list)}
-                disabled={lagrerId === list.id}
-                style={{
-                  padding: "18px 20px",
-                  fontSize: "16px",
-                  borderRadius: "12px",
-                  border: "1px solid #ccc",
-                  cursor: lagrerId === list.id ? "default" : "pointer",
-                  minWidth: "150px",
-                  background: list.hide_for_6_hours ? "#dbeafe" : "#f3f4f6",
-                  color: "#000",
-                  fontWeight: "bold",
-                  opacity: lagrerId === list.id ? 0.7 : 1,
-                }}
+                onClick={() => velgListe(list)}
+                className="h-20 flex-1 rounded-2xl bg-white text-xl font-semibold text-black shadow-lg transition active:scale-95"
               >
-                {lagrerId === list.id
-                  ? t("saving")
-                  : list.hide_for_6_hours
-                  ? t("hide6h")
-                  : t("showAlways")}
+                {getTranslatedTaskListName(list.name)}
               </button>
-            )}
-          </div>
-        ))}
-      </div>
 
-      {leader && (
+              {leader && (
+                <button
+                  type="button"
+                  onClick={() => toggleHideMode(list)}
+                  disabled={lagrerId === list.id}
+                  className={`flex-shrink-0 rounded-2xl px-4 text-sm font-bold transition active:scale-95 disabled:opacity-50 ${
+                    list.hide_for_6_hours
+                      ? "bg-blue-500 text-white"
+                      : "bg-zinc-700 text-zinc-300"
+                  }`}
+                >
+                  {lagrerId === list.id
+                    ? t("saving")
+                    : list.hide_for_6_hours
+                    ? t("hide6h")
+                    : t("showAlways")}
+                </button>
+              )}
+            </div>
+          ))}
+
+          {leader && (
+            <button
+              onClick={() => router.push("/admin-oppgaver")}
+              className="h-16 w-[85%] rounded-2xl bg-zinc-800 text-lg font-semibold text-white shadow-lg transition active:scale-95"
+            >
+              {t("manageTasks")}
+            </button>
+          )}
+        </div>
+
         <button
-          onClick={gåTilAdminOppgaver}
-          style={{
-            display: "block",
-            margin: "20px 0 12px 0",
-            padding: "18px 24px",
-            fontSize: "20px",
-            borderRadius: "12px",
-            border: "1px solid #ccc",
-            cursor: "pointer",
-            minWidth: "280px",
-            textAlign: "left",
-            background: "#f3f3f3",
-            color: "#000",
-            fontWeight: "bold",
-          }}
+          onClick={() => router.push("/")}
+          className="mt-10 rounded-xl border border-zinc-600 px-5 py-3 text-sm text-zinc-300 transition active:scale-95"
         >
-          {t("manageTasks")}
+          {t("back")}
         </button>
-      )}
-
-      <button
-        onClick={tilbake}
-        style={{
-          marginTop: 24,
-          padding: "12px 18px",
-          fontSize: "16px",
-          borderRadius: "10px",
-          border: "1px solid #ccc",
-          cursor: "pointer",
-          background: "white",
-          color: "#000",
-        }}
-      >
-        {t("back")}
-      </button>
+      </div>
     </main>
   )
 }

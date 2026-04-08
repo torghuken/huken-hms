@@ -128,6 +128,7 @@ function SortableTaskCard({
   movingLabel: string
   displayName: string
 }) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
   const {
     attributes,
     listeners,
@@ -157,57 +158,50 @@ function SortableTaskCard({
       role="button"
       tabIndex={0}
     >
-      <div
-        style={{
-          display: "block",
-          width: "100%",
-          padding: "18px 24px",
-          fontSize: "20px",
-          borderRadius: "12px",
-          border: "1px solid #ccc",
-          textAlign: "left",
-          background: "white",
-          color: "#000",
-          cursor: "pointer",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            gap: 12,
-          }}
-        >
-          <span>{displayName}</span>
+      <div className="rounded-2xl bg-white p-5 text-black shadow-lg">
+        <div className="flex items-start justify-between gap-3">
+          <span className="text-lg font-semibold">{displayName}</span>
 
-          <div
-            style={{
-              display: "flex",
-              gap: 8,
-              alignItems: "center",
-              flexShrink: 0,
-            }}
-          >
-            <button
-              type="button"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => {
-                e.stopPropagation()
-                onDelete(task)
-              }}
-              style={{
-                padding: "8px 12px",
-                fontSize: "14px",
-                borderRadius: "10px",
-                border: "1px solid #dc2626",
-                background: "#ef4444",
-                color: "white",
-                cursor: "pointer",
-              }}
-            >
-              {deleteLabel}
-            </button>
+          <div className="flex flex-shrink-0 items-center gap-2">
+            {confirmingDelete ? (
+              <>
+                <button
+                  type="button"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setConfirmingDelete(false)
+                    onDelete(task)
+                  }}
+                  className="rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white"
+                >
+                  ✓ {deleteLabel}
+                </button>
+                <button
+                  type="button"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setConfirmingDelete(false)
+                  }}
+                  className="rounded-lg bg-zinc-400 px-3 py-2 text-sm font-semibold text-white"
+                >
+                  ✕
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setConfirmingDelete(true)
+                }}
+                className="rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white"
+              >
+                {deleteLabel}
+              </button>
+            )}
 
             <button
               type="button"
@@ -215,16 +209,8 @@ function SortableTaskCard({
               onClick={(e) => e.stopPropagation()}
               {...attributes}
               {...listeners}
-              style={{
-                padding: "8px 12px",
-                fontSize: "14px",
-                borderRadius: "10px",
-                border: "1px solid #ccc",
-                background: "#f3f3f3",
-                color: "#666",
-                cursor: "grab",
-                touchAction: "none",
-              }}
+              className="rounded-lg border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-600"
+              style={{ touchAction: "none", cursor: "grab" }}
             >
               {flytterId === task.id ? movingLabel : dragLabel}
             </button>
@@ -345,8 +331,6 @@ export default function OppgavePage() {
       const monthlyTasks = allTasks.filter((t) => t.is_monthly)
       const regularTasks = allTasks.filter((t) => !t.is_monthly)
 
-      // Hent logs for månedlige oppgaver (alltid, uavhengig av hide_for_6_hours)
-      // Hent logs for vanlige oppgaver (kun hvis hide_for_6_hours er satt)
       const needsLogCheck = monthlyTasks.length > 0 || hideListFor6Hours
 
       if (!needsLogCheck) {
@@ -386,7 +370,6 @@ export default function OppgavePage() {
 
       const recentLogs: RecentLog[] = logsData
 
-      // Månedlige oppgaver: skjul hvis utført siste 21 dager
       const twentyOneDaysAgoIso = get21DaysAgoIso()
       const monthlyHiddenIds = new Set(
         recentLogs
@@ -396,7 +379,6 @@ export default function OppgavePage() {
           .filter((id): id is string => Boolean(id))
       )
 
-      // Vanlige oppgaver: skjul hvis utført siste 6 timer (kun hvis hide_for_6_hours)
       const sixHoursAgoIso = getSixHoursAgoIso()
       const regularHiddenIds = hideListFor6Hours
         ? new Set(
@@ -548,100 +530,77 @@ export default function OppgavePage() {
     isOpeningList(listeNavn) || isClosingList(listeNavn)
 
   return (
-    <main style={{ padding: 40 }}>
-      <h1>{t("selectTask")}</h1>
+    <main className="min-h-screen bg-black px-6 pt-16 pb-12 text-white">
+      <div className="mx-auto flex max-w-md flex-col items-center">
+        <h1 className="mb-2 text-3xl font-bold">{t("selectTask")}</h1>
 
-      {listeNavn && (
-        <p>
-          {t("list")}: {translatedListName}
-        </p>
-      )}
+        {listeNavn && (
+          <p className="mb-8 text-sm text-zinc-400">{translatedListName}</p>
+        )}
 
-      {isLeader && (
-        <p style={{ color: "#666", marginTop: 8 }}>{t("adminTaskHelp")}</p>
-      )}
+        {isLeader && (
+          <p className="mb-4 text-xs text-zinc-500">{t("adminTaskHelp")}</p>
+        )}
 
-      {status && <p style={{ color: "green" }}>{status}</p>}
-      {feil && <p style={{ color: "red" }}>{feil}</p>}
+        {status && <p className="mb-4 text-green-400">{status}</p>}
+        {feil && <p className="mb-4 text-red-400">{feil}</p>}
 
-      {tasks.length === 0 && !feil && (
-        <p>{isOpeningOrClosing ? t("noTasksToday") : t("noTasksFound")}</p>
-      )}
+        {tasks.length === 0 && !feil && (
+          <p className="mt-8 text-zinc-400">
+            {isOpeningOrClosing ? t("noTasksToday") : t("noTasksFound")}
+          </p>
+        )}
 
-      {!isLeader &&
-        tasks.map((task) => (
-          <button
-            key={task.id}
-            onClick={() => velgOppgave(task)}
-            style={{
-              display: "block",
-              margin: "12px 0",
-              padding: "18px 24px",
-              fontSize: "20px",
-              borderRadius: "12px",
-              border: "1px solid #ccc",
-              cursor: "pointer",
-              minWidth: "280px",
-              textAlign: "left",
-              background: "white",
-              color: "#000",
-            }}
+        {!isLeader && (
+          <div className="flex w-full flex-col items-center gap-4">
+            {tasks.map((task) => (
+              <button
+                key={task.id}
+                onClick={() => velgOppgave(task)}
+                className="w-[92%] rounded-2xl bg-white px-6 py-5 text-left text-lg font-semibold text-black shadow-lg transition active:scale-95"
+              >
+                {getTaskDisplayName(task, language)}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {isLeader && (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
           >
-            {getTaskDisplayName(task, language)}
-          </button>
-        ))}
-
-      {isLeader && (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={tasks.map((task) => task.id)}
-            strategy={verticalListSortingStrategy}
-          >
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 12,
-                marginTop: 12,
-              }}
+            <SortableContext
+              items={tasks.map((task) => task.id)}
+              strategy={verticalListSortingStrategy}
             >
-              {tasks.map((task) => (
-                <SortableTaskCard
-                  key={task.id}
-                  task={task}
-                  flytterId={flytterId}
-                  onOpen={velgOppgave}
-                  onDelete={slettOppgave}
-                  deleteLabel={t("delete")}
-                  dragLabel={t("drag")}
-                  movingLabel={t("moving")}
-                  displayName={getTaskDisplayName(task, language)}
-                />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
-      )}
+              <div className="flex w-full flex-col gap-4">
+                {tasks.map((task) => (
+                  <SortableTaskCard
+                    key={task.id}
+                    task={task}
+                    flytterId={flytterId}
+                    onOpen={velgOppgave}
+                    onDelete={slettOppgave}
+                    deleteLabel={t("delete")}
+                    dragLabel={t("drag")}
+                    movingLabel={t("moving")}
+                    displayName={getTaskDisplayName(task, language)}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        )}
 
-      <button
-        onClick={tilbake}
-        style={{
-          marginTop: 24,
-          padding: "12px 18px",
-          fontSize: "16px",
-          borderRadius: "10px",
-          border: "1px solid #ccc",
-          cursor: "pointer",
-          background: "white",
-          color: "#000",
-        }}
-      >
-        {t("back")}
-      </button>
+        <button
+          onClick={tilbake}
+          className="mt-10 rounded-xl border border-zinc-600 px-5 py-3 text-sm text-zinc-300 transition active:scale-95"
+        >
+          {t("back")}
+        </button>
+      </div>
     </main>
   )
 }
