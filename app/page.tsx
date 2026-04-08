@@ -9,6 +9,7 @@ export default function HomePage() {
   const router = useRouter()
   const [navn, setNavn] = useState("")
   const [rolle, setRolle] = useState("staff")
+  const [hasTemperature, setHasTemperature] = useState(false)
   const { t } = useLanguage()
 
   useEffect(() => {
@@ -25,6 +26,19 @@ export default function HomePage() {
     setNavn(employeeName || "")
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setRolle(employeeRole || "staff")
+
+    const venue = localStorage.getItem("selectedVenue")
+    if (venue) {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      fetch(
+        `${url}/rest/v1/temperature_units?select=id&venue_id=eq.${venue}&active=eq.true&limit=1`,
+        { headers: { apikey: key, Authorization: `Bearer ${key}` } }
+      )
+        .then((res) => res.json())
+        .then((data) => setHasTemperature(Array.isArray(data) && data.length > 0))
+        .catch(() => setHasTemperature(false))
+    }
   }, [router])
 
   function byttBruker() {
@@ -62,12 +76,14 @@ export default function HomePage() {
             {t("tasks")}
           </button>
 
-          <button
-            onClick={() => router.push("/temperatur")}
-            className="h-20 w-[85%] rounded-2xl bg-white text-xl font-semibold text-black shadow-lg active:scale-95 transition"
-          >
-            {t("temperatureControl")}
-          </button>
+          {hasTemperature && (
+            <button
+              onClick={() => router.push("/temperatur")}
+              className="h-20 w-[85%] rounded-2xl bg-white text-xl font-semibold text-black shadow-lg active:scale-95 transition"
+            >
+              {t("temperatureControl")}
+            </button>
+          )}
 
           <button
             onClick={() => router.push("/meld")}
@@ -92,12 +108,14 @@ export default function HomePage() {
                 {t("manageTasks")}
               </button>
 
-              <button
-                onClick={() => router.push("/admin-temperatur")}
-                className="h-20 w-[80%] rounded-2xl bg-zinc-800 text-xl font-semibold text-white shadow-lg active:scale-95 transition"
-              >
-                {t("manageTemperature")}
-              </button>
+              {hasTemperature && (
+                <button
+                  onClick={() => router.push("/admin-temperatur")}
+                  className="h-20 w-[80%] rounded-2xl bg-zinc-800 text-xl font-semibold text-white shadow-lg active:scale-95 transition"
+                >
+                  {t("manageTemperature")}
+                </button>
+              )}
             </>
           )}
 
