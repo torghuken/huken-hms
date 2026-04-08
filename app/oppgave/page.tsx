@@ -116,6 +116,8 @@ function SortableTaskCard({
   onDelete,
   onEdit,
   deleteLabel,
+  confirmDeleteLabel,
+  cancelDeleteLabel,
   editLabel,
   dragLabel,
   movingLabel,
@@ -127,6 +129,8 @@ function SortableTaskCard({
   onDelete: (task: Task) => void
   onEdit: (task: Task) => void
   deleteLabel: string
+  confirmDeleteLabel: string
+  cancelDeleteLabel: string
   editLabel: string
   dragLabel: string
   movingLabel: string
@@ -149,63 +153,37 @@ function SortableTaskCard({
   }
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      onClick={() => onOpen(task)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault()
-          onOpen(task)
-        }
-      }}
-      role="button"
-      tabIndex={0}
-    >
-      <div className="rounded-2xl bg-white p-5 text-black shadow-lg">
-        <div className="flex items-start justify-between gap-3">
-          <span className="text-lg font-semibold">{displayName}</span>
+    <>
+      <div
+        ref={setNodeRef}
+        style={style}
+        onClick={() => onOpen(task)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault()
+            onOpen(task)
+          }
+        }}
+        role="button"
+        tabIndex={0}
+      >
+        <div className="rounded-2xl bg-white p-5 text-black shadow-lg">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-lg font-semibold">{displayName}</span>
 
-          <div className="flex flex-shrink-0 items-center gap-2">
-            <button
-              type="button"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => {
-                e.stopPropagation()
-                onEdit(task)
-              }}
-              className="rounded-lg bg-blue-500 px-3 py-2 text-sm font-semibold text-white"
-            >
-              {editLabel}
-            </button>
+            <div className="flex flex-shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onEdit(task)
+                }}
+                className="rounded-lg bg-blue-500 px-3 py-2 text-sm font-semibold text-white"
+              >
+                {editLabel}
+              </button>
 
-            {confirmingDelete ? (
-              <>
-                <button
-                  type="button"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setConfirmingDelete(false)
-                    onDelete(task)
-                  }}
-                  className="rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white"
-                >
-                  ✓ {deleteLabel}
-                </button>
-                <button
-                  type="button"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setConfirmingDelete(false)
-                  }}
-                  className="rounded-lg bg-zinc-400 px-3 py-2 text-sm font-semibold text-white"
-                >
-                  ✕
-                </button>
-              </>
-            ) : (
               <button
                 type="button"
                 onPointerDown={(e) => e.stopPropagation()}
@@ -217,23 +195,57 @@ function SortableTaskCard({
               >
                 {deleteLabel}
               </button>
-            )}
 
-            <button
-              type="button"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
-              {...attributes}
-              {...listeners}
-              className="rounded-lg border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-600"
-              style={{ touchAction: "none", cursor: "grab" }}
-            >
-              {flytterId === task.id ? movingLabel : dragLabel}
-            </button>
+              <button
+                type="button"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+                {...attributes}
+                {...listeners}
+                className="rounded-lg border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-600"
+                style={{ touchAction: "none", cursor: "grab" }}
+              >
+                {flytterId === task.id ? movingLabel : dragLabel}
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {confirmingDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+          onClick={() => setConfirmingDelete(false)}
+        >
+          <div
+            className="mx-6 w-full max-w-sm rounded-2xl bg-zinc-900 p-6 text-center text-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="mb-2 text-lg font-semibold">{confirmDeleteLabel}</p>
+            <p className="mb-6 text-sm text-zinc-400">{displayName}</p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmingDelete(false)}
+                className="flex-1 rounded-xl border border-zinc-600 py-3 text-lg font-semibold text-zinc-300 transition active:scale-95"
+              >
+                {cancelDeleteLabel}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmingDelete(false)
+                  onDelete(task)
+                }}
+                className="flex-1 rounded-xl bg-red-500 py-3 text-lg font-semibold text-white transition active:scale-95"
+              >
+                {deleteLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -604,6 +616,8 @@ export default function OppgavePage() {
                       router.push("/admin-oppgaver")
                     }}
                     deleteLabel={t("delete")}
+                    confirmDeleteLabel={t("confirmDelete")}
+                    cancelDeleteLabel={t("cancelDelete")}
                     editLabel={t("edit")}
                     dragLabel={t("drag")}
                     movingLabel={t("moving")}

@@ -443,55 +443,29 @@ function SortableTaskCard({
   const displayName = getTaskDisplayName(task, language)
 
   return (
-    <div ref={setNodeRef} style={style}>
-      <div className="rounded-xl bg-white p-4 text-black">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1">
-            <span className="font-medium">{displayName}</span>
-            <p className="mt-1 text-xs text-zinc-500">{text.useDragToMove}</p>
-          </div>
+    <>
+      <div ref={setNodeRef} style={style}>
+        <div className="rounded-xl bg-white p-4 text-black">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <span className="font-medium">{displayName}</span>
+              <p className="mt-1 text-xs text-zinc-500">{text.useDragToMove}</p>
+            </div>
 
-          <div className="flex flex-wrap justify-end gap-2">
-            <button
-              type="button"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => {
-                e.stopPropagation()
-                onEdit(task)
-              }}
-              disabled={flytterId === task.id || sletterId === task.id}
-              className="rounded-lg bg-blue-500 px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
-            >
-              {text.edit}
-            </button>
+            <div className="flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onEdit(task)
+                }}
+                disabled={flytterId === task.id || sletterId === task.id}
+                className="rounded-lg bg-blue-500 px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {text.edit}
+              </button>
 
-            {confirmingDelete ? (
-              <>
-                <button
-                  type="button"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setConfirmingDelete(false)
-                    onDelete(task)
-                  }}
-                  className="rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white"
-                >
-                  ✓ {text.delete}
-                </button>
-                <button
-                  type="button"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setConfirmingDelete(false)
-                  }}
-                  className="rounded-lg bg-zinc-400 px-3 py-2 text-sm font-semibold text-white"
-                >
-                  ✕
-                </button>
-              </>
-            ) : (
               <button
                 type="button"
                 onPointerDown={(e) => e.stopPropagation()}
@@ -504,36 +478,70 @@ function SortableTaskCard({
               >
                 {sletterId === task.id ? text.deleting : text.delete}
               </button>
-            )}
 
-            <button
-              type="button"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
-              {...attributes}
-              {...listeners}
-              className="rounded-lg border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm font-semibold text-zinc-700"
-              style={{ touchAction: "none", cursor: "grab" }}
-            >
-              {flytterId === task.id ? text.moving : text.drag}
-            </button>
+              <button
+                type="button"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+                {...attributes}
+                {...listeners}
+                className="rounded-lg border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm font-semibold text-zinc-700"
+                style={{ touchAction: "none", cursor: "grab" }}
+              >
+                {flytterId === task.id ? text.moving : text.drag}
+              </button>
+            </div>
+          </div>
+
+          <p className="mt-2 text-sm text-zinc-600">{formatDays(task)}</p>
+          <p className="mt-1 text-sm text-zinc-600">
+            {task.requires_photo ? text.requiresPhoto : text.requiresConfirmation}
+          </p>
+
+          {task.image_url && (
+            <img
+              src={task.image_url}
+              alt={text.exampleImage}
+              className="mt-3 max-h-40 rounded-xl"
+            />
+          )}
+        </div>
+      </div>
+
+      {confirmingDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+          onClick={() => setConfirmingDelete(false)}
+        >
+          <div
+            className="mx-6 w-full max-w-sm rounded-2xl bg-zinc-900 p-6 text-center text-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="mb-2 text-lg font-semibold">{text.confirmDeleteStart.replace('"', '')}</p>
+            <p className="mb-6 text-sm text-zinc-400">{displayName}</p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmingDelete(false)}
+                className="flex-1 rounded-xl border border-zinc-600 py-3 text-lg font-semibold text-zinc-300 transition active:scale-95"
+              >
+                {text.cancel}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmingDelete(false)
+                  onDelete(task)
+                }}
+                className="flex-1 rounded-xl bg-red-500 py-3 text-lg font-semibold text-white transition active:scale-95"
+              >
+                {text.delete}
+              </button>
+            </div>
           </div>
         </div>
-
-        <p className="mt-2 text-sm text-zinc-600">{formatDays(task)}</p>
-        <p className="mt-1 text-sm text-zinc-600">
-          {task.requires_photo ? text.requiresPhoto : text.requiresConfirmation}
-        </p>
-
-        {task.image_url && (
-          <img
-            src={task.image_url}
-            alt={text.exampleImage}
-            className="mt-3 max-h-40 rounded-xl"
-          />
-        )}
-      </div>
-    </div>
+      )}
+    </>
   )
 }
 
