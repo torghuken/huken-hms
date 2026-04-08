@@ -14,6 +14,7 @@ export default function AdminPage() {
       return
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setKlar(true)
   }, [router])
 

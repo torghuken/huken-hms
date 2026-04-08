@@ -17,8 +17,10 @@ export default function ProblemerPage() {
   useEffect(() => {
     const selectedVenue = localStorage.getItem("selectedVenue")
     if (selectedVenue) {
+      // eslint-disable-next-line react-hooks/immutability
       loadLogs(selectedVenue)
     } else {
+      // eslint-disable-next-line react-hooks/immutability
       loadLogs(null)
     }
   }, [])
@@ -28,7 +30,7 @@ export default function ProblemerPage() {
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
     try {
-      let query = `${url}/rest/v1/logs?select=id,comment,image_url,created_at,status,employees(venue_id)&order=created_at.desc`
+      const query = `${url}/rest/v1/logs?select=id,comment,image_url,created_at,status,employees(venue_id)&order=created_at.desc`
 
       const res = await fetch(query, {
         headers: {

@@ -119,6 +119,7 @@ export default function TemperaturLoggPage() {
       return
     }
 
+    // eslint-disable-next-line react-hooks/immutability
     loadPage(selectedVenue)
   }, [router])
 

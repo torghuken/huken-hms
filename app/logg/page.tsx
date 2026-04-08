@@ -30,6 +30,7 @@ export default function LoggPage() {
       return
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setNavn(employeeName || "")
   }, [router])
 

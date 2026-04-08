@@ -31,6 +31,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     const saved = localStorage.getItem("language")
 
     if (isValidLanguage(saved)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLanguageState(saved)
     }
   }, [])

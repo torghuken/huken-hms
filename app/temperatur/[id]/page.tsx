@@ -108,6 +108,7 @@ export default function TemperaturEnhetPage() {
     setUnitName(unitNameStored || "")
 
     if (unitId) {
+      // eslint-disable-next-line react-hooks/immutability
       loadUnit(unitId)
     }
   }, [router, unitId])

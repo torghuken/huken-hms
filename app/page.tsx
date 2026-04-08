@@ -21,7 +21,9 @@ export default function HomePage() {
       return
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setNavn(employeeName || "")
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRolle(employeeRole || "staff")
   }, [router])
 

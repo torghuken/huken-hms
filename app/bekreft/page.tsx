@@ -77,10 +77,15 @@ export default function BekreftPage() {
   const [flash, setFlash] = useState(false)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAnsatt(localStorage.getItem("selectedEmployeeName") || "")
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOppgave(localStorage.getItem("selectedTaskName") || "")
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOppgaveBilde(localStorage.getItem("selectedTaskImageUrl"))
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setEmployeeId(localStorage.getItem("selectedEmployeeId"))
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTaskId(localStorage.getItem("selectedTaskId"))
   }, [])
 
