@@ -126,6 +126,11 @@ const adminTaskTexts: Record<
     saturday: string
     sunday: string
     translating: string
+    edit: string
+    editTask: string
+    saveChanges: string
+    cancel: string
+    taskUpdated: string
   }
 > = {
   no: {
@@ -179,6 +184,11 @@ const adminTaskTexts: Record<
     saturday: "Lørdag",
     sunday: "Søndag",
     translating: "Oversetter...",
+    edit: "Rediger",
+    editTask: "Rediger oppgave",
+    saveChanges: "Lagre endringer",
+    cancel: "Avbryt",
+    taskUpdated: "Oppgaven er oppdatert",
   },
   en: {
     title: "Manage tasks",
@@ -231,6 +241,11 @@ const adminTaskTexts: Record<
     saturday: "Saturday",
     sunday: "Sunday",
     translating: "Translating...",
+    edit: "Edit",
+    editTask: "Edit task",
+    saveChanges: "Save changes",
+    cancel: "Cancel",
+    taskUpdated: "Task updated",
   },
   es: {
     title: "Administrar tareas",
@@ -283,6 +298,11 @@ const adminTaskTexts: Record<
     saturday: "Sábado",
     sunday: "Domingo",
     translating: "Traduciendo...",
+    edit: "Editar",
+    editTask: "Editar tarea",
+    saveChanges: "Guardar cambios",
+    cancel: "Cancelar",
+    taskUpdated: "Tarea actualizada",
   },
   ru: {
     title: "Управление задачами",
@@ -335,6 +355,11 @@ const adminTaskTexts: Record<
     saturday: "Суббота",
     sunday: "Воскресенье",
     translating: "Перевод...",
+    edit: "Редактировать",
+    editTask: "Редактировать задачу",
+    saveChanges: "Сохранить изменения",
+    cancel: "Отмена",
+    taskUpdated: "Задача обновлена",
   },
 }
 
@@ -372,6 +397,7 @@ function SortableTaskCard({
   flytterId,
   sletterId,
   onDelete,
+  onEdit,
   language,
   text,
 }: {
@@ -379,6 +405,7 @@ function SortableTaskCard({
   flytterId: string | null
   sletterId: string | null
   onDelete: (task: Task) => void
+  onEdit: (task: Task) => void
   language: UiLanguage
   text: Record<string, string>
 }) {
@@ -425,6 +452,19 @@ function SortableTaskCard({
           </div>
 
           <div className="flex flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation()
+                onEdit(task)
+              }}
+              disabled={flytterId === task.id || sletterId === task.id}
+              className="rounded-lg bg-blue-500 px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              {text.edit}
+            </button>
+
             {confirmingDelete ? (
               <>
                 <button
@@ -517,6 +557,8 @@ export default function AdminOppgaverPage() {
   const [sletterId, setSletterId] = useState<string | null>(null)
   const [flytterId, setFlytterId] = useState<string | null>(null)
   const [retranslating, setRetranslating] = useState(false)
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -696,6 +738,43 @@ export default function AdminOppgaverPage() {
     })
   }
 
+  function startEditing(task: Task) {
+    setEditingTaskId(task.id)
+    setNyOppgave(getTaskDisplayName(task, currentLanguage))
+    setValgtListeId(task.list_id || "")
+    setRequiresPhoto(task.requires_photo)
+    setDays({
+      monday: task.show_monday,
+      tuesday: task.show_tuesday,
+      wednesday: task.show_wednesday,
+      thursday: task.show_thursday,
+      friday: task.show_friday,
+      saturday: task.show_saturday,
+      sunday: task.show_sunday,
+    })
+    setImageFile(null)
+    if (previewUrl) URL.revokeObjectURL(previewUrl)
+    setPreviewUrl(task.image_url)
+    setExistingImageUrl(task.image_url)
+    setFeil("")
+    setStatus("")
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  function cancelEditing() {
+    setEditingTaskId(null)
+    setExistingImageUrl(null)
+    setNyOppgave("")
+    setValgtListeId("")
+    setRequiresPhoto(true)
+    setDays(defaultDays)
+    setImageFile(null)
+    if (previewUrl) URL.revokeObjectURL(previewUrl)
+    setPreviewUrl(null)
+    setFeil("")
+    setStatus("")
+  }
+
   function onPickImage(file: File | null) {
     if (previewUrl) URL.revokeObjectURL(previewUrl)
 
@@ -710,7 +789,7 @@ export default function AdminOppgaverPage() {
   }
 
   async function uploadImageIfNeeded(): Promise<string | null> {
-    if (!imageFile) return null
+    if (!imageFile) return existingImageUrl
 
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -839,7 +918,7 @@ export default function AdminOppgaverPage() {
       return
     }
 
-    if (!imageFile) {
+    if (!imageFile && !existingImageUrl) {
       setFeil(text.mustChooseExampleImage)
       return
     }
@@ -873,49 +952,95 @@ export default function AdminOppgaverPage() {
 
       const imageUrl = await uploadImageIfNeeded()
 
-      const res = await fetch(`${url}/rest/v1/tasks`, {
-        method: "POST",
-        headers: {
-          apikey: key,
-          Authorization: `Bearer ${key}`,
-          "Content-Type": "application/json",
-          Prefer: "return=representation",
-        },
-        body: JSON.stringify({
-          name: translated.name_no,
-          name_no: translated.name_no,
-          name_en: translated.name_en,
-          name_es: translated.name_es,
-          name_ru: translated.name_ru,
-          list_id: valgtListeId,
-          active: true,
-          sort_order: nesteSortOrder,
-          image_url: imageUrl,
-          requires_photo: requiresPhoto,
-          show_monday: days.monday,
-          show_tuesday: days.tuesday,
-          show_wednesday: days.wednesday,
-          show_thursday: days.thursday,
-          show_friday: days.friday,
-          show_saturday: days.saturday,
-          show_sunday: days.sunday,
-        }),
-      })
+      if (editingTaskId) {
+        const res = await fetch(`${url}/rest/v1/tasks?id=eq.${editingTaskId}`, {
+          method: "PATCH",
+          headers: {
+            apikey: key,
+            Authorization: `Bearer ${key}`,
+            "Content-Type": "application/json",
+            Prefer: "return=representation",
+          },
+          body: JSON.stringify({
+            name: translated.name_no,
+            name_no: translated.name_no,
+            name_en: translated.name_en,
+            name_es: translated.name_es,
+            name_ru: translated.name_ru,
+            list_id: valgtListeId,
+            image_url: imageUrl,
+            requires_photo: requiresPhoto,
+            show_monday: days.monday,
+            show_tuesday: days.tuesday,
+            show_wednesday: days.wednesday,
+            show_thursday: days.thursday,
+            show_friday: days.friday,
+            show_saturday: days.saturday,
+            show_sunday: days.sunday,
+          }),
+        })
 
-      if (!res.ok) {
-        const responseText = await res.text()
-        setFeil(responseText || text.couldNotAddTask)
-        setStatus("")
-        return
+        if (!res.ok) {
+          const responseText = await res.text()
+          setFeil(responseText || text.couldNotAddTask)
+          setStatus("")
+          return
+        }
+
+        setEditingTaskId(null)
+        setExistingImageUrl(null)
+        setNyOppgave("")
+        setRequiresPhoto(true)
+        setDays(defaultDays)
+        setImageFile(null)
+        if (previewUrl) URL.revokeObjectURL(previewUrl)
+        setPreviewUrl(null)
+        setStatus(text.taskUpdated)
+      } else {
+        const res = await fetch(`${url}/rest/v1/tasks`, {
+          method: "POST",
+          headers: {
+            apikey: key,
+            Authorization: `Bearer ${key}`,
+            "Content-Type": "application/json",
+            Prefer: "return=representation",
+          },
+          body: JSON.stringify({
+            name: translated.name_no,
+            name_no: translated.name_no,
+            name_en: translated.name_en,
+            name_es: translated.name_es,
+            name_ru: translated.name_ru,
+            list_id: valgtListeId,
+            active: true,
+            sort_order: nesteSortOrder,
+            image_url: imageUrl,
+            requires_photo: requiresPhoto,
+            show_monday: days.monday,
+            show_tuesday: days.tuesday,
+            show_wednesday: days.wednesday,
+            show_thursday: days.thursday,
+            show_friday: days.friday,
+            show_saturday: days.saturday,
+            show_sunday: days.sunday,
+          }),
+        })
+
+        if (!res.ok) {
+          const responseText = await res.text()
+          setFeil(responseText || text.couldNotAddTask)
+          setStatus("")
+          return
+        }
+
+        setNyOppgave("")
+        setRequiresPhoto(true)
+        setDays(defaultDays)
+        setImageFile(null)
+        if (previewUrl) URL.revokeObjectURL(previewUrl)
+        setPreviewUrl(null)
+        setStatus(text.taskSaved)
       }
-
-      setNyOppgave("")
-      setRequiresPhoto(true)
-      setDays(defaultDays)
-      setImageFile(null)
-      if (previewUrl) URL.revokeObjectURL(previewUrl)
-      setPreviewUrl(null)
-      setStatus(text.taskSaved)
 
       loadTasks(selectedVenue)
       loadTaskLists(selectedVenue)
@@ -1063,6 +1188,7 @@ export default function AdminOppgaverPage() {
                   flytterId={flytterId}
                   sletterId={sletterId}
                   onDelete={deleteTask}
+                  onEdit={startEditing}
                   language={currentLanguage}
                   text={text}
                 />
@@ -1092,7 +1218,9 @@ export default function AdminOppgaverPage() {
         </button>
 
         <div className="rounded-2xl bg-zinc-900 p-4">
-          <h2 className="mb-4 text-xl font-semibold">{text.addTask}</h2>
+          <h2 className="mb-4 text-xl font-semibold">
+            {editingTaskId ? text.editTask : text.addTask}
+          </h2>
 
           <div className="space-y-3">
             <input
@@ -1217,8 +1345,18 @@ export default function AdminOppgaverPage() {
               onClick={leggTilOppgave}
               className="w-full rounded-xl bg-white px-4 py-3 text-lg font-semibold text-black"
             >
-              {text.add}
+              {editingTaskId ? text.saveChanges : text.add}
             </button>
+
+            {editingTaskId && (
+              <button
+                type="button"
+                onClick={cancelEditing}
+                className="w-full rounded-xl border border-zinc-600 px-4 py-3 text-lg font-semibold text-zinc-300"
+              >
+                {text.cancel}
+              </button>
+            )}
           </div>
         </div>
 
