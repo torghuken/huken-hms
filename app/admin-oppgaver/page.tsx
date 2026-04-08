@@ -1176,11 +1176,7 @@ export default function AdminOppgaverPage() {
     .filter((t) => t.active && isListMatch(t.task_lists?.name, "Stenging"))
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
 
-  const andreOppgaver = tasks
-    .filter((t) => t.active && isListMatch(t.task_lists?.name, "Andre oppgaver"))
-    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-
-  const knownNames = new Set(["åpning", "daglige oppgaver", "stenging", "andre oppgaver"])
+  const knownNames = new Set(["åpning", "daglige oppgaver", "stenging"])
   const andreListerOppgaver = tasks
     .filter(
       (task) =>
@@ -1415,8 +1411,6 @@ export default function AdminOppgaverPage() {
         <CollapsibleSection title="Åpning" sectionTasks={apningOppgaver} />
         <CollapsibleSection title="Daglige oppgaver" sectionTasks={dagligeOppgaver} />
         <CollapsibleSection title="Stenging" sectionTasks={stengingOppgaver} />
-        <CollapsibleSection title="Andre oppgaver" sectionTasks={andreOppgaver} />
-
         {andreListerOppgaver.length > 0 && (
           <div>
             <h2 className="mb-3 text-xl font-semibold">{text.moreTasks}</h2>
