@@ -92,6 +92,13 @@ export default function HomePage() {
             {t("thisNeedsFixing")}
           </button>
 
+          <button
+            onClick={() => router.push("/opplaring")}
+            className="h-20 w-[80%] rounded-2xl bg-zinc-700 text-xl font-semibold text-white shadow-lg active:scale-95 transition"
+          >
+            {t("hseTraining")}
+          </button>
+
           {rolle === "leader" && (
             <>
               <button
