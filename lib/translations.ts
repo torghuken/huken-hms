@@ -15,6 +15,7 @@ export const translations = {
     hseTraining: "HMS-opplæring",
     log: "Logg",
     manageTasks: "Administrer oppgaver",
+    manageUsers: "Brukere",
     manageTemperature: "Administrer temperatur",
     switchUser: "Bytt bruker",
 
@@ -88,6 +89,7 @@ export const translations = {
     hseTraining: "HSE Training",
     log: "Log",
     manageTasks: "Manage tasks",
+    manageUsers: "Users",
     manageTemperature: "Manage temperature",
     switchUser: "Switch user",
 
@@ -162,6 +164,7 @@ export const translations = {
     hseTraining: "Formación SST",
     log: "Registro",
     manageTasks: "Administrar tareas",
+    manageUsers: "Usuarios",
     manageTemperature: "Administrar temperatura",
     switchUser: "Cambiar usuario",
 
@@ -237,6 +240,7 @@ export const translations = {
     hseTraining: "Обучение ОТ",
     log: "Журнал",
     manageTasks: "Управление задачами",
+    manageUsers: "Пользователи",
     manageTemperature: "Управление температурой",
     switchUser: "Сменить пользователя",
 

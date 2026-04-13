@@ -115,6 +115,13 @@ export default function HomePage() {
                 {t("manageTasks")}
               </button>
 
+              <button
+                onClick={() => router.push("/brukere")}
+                className="h-20 w-[80%] rounded-2xl bg-zinc-800 text-xl font-semibold text-white shadow-lg active:scale-95 transition"
+              >
+                {t("manageUsers")}
+              </button>
+
               {hasTemperature && (
                 <button
                   onClick={() => router.push("/admin-temperatur")}
