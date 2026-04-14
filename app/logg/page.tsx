@@ -49,6 +49,13 @@ export default function LoggPage() {
           </button>
 
           <button
+            onClick={() => router.push("/logg/daglige")}
+            className="h-20 w-[90%] rounded-2xl bg-white text-xl font-semibold text-black shadow-lg transition active:scale-95"
+          >
+            {t("dailyTasks")}
+          </button>
+
+          <button
             onClick={() => router.push("/logg/stenging")}
             className="h-20 w-[90%] rounded-2xl bg-white text-xl font-semibold text-black shadow-lg transition active:scale-95"
           >
