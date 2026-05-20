@@ -20,6 +20,8 @@ function isOpeningList(name: string) {
   const normalized = normalizeListName(name)
   return (
     normalized === "åpning" ||
+    normalized === "åpning 1 etg" ||
+    normalized === "åpning 2 etg" ||
     normalized === "opening" ||
     normalized === "apertura"
   )
@@ -29,6 +31,7 @@ function isDailyTasksList(name: string) {
   const normalized = normalizeListName(name)
   return (
     normalized === "daglige oppgaver" ||
+    normalized === "diverse" ||
     normalized === "daily tasks" ||
     normalized === "tareas diarias" ||
     normalized === "ежедневные задачи"
@@ -39,6 +42,8 @@ function isClosingList(name: string) {
   const normalized = normalizeListName(name)
   return (
     normalized === "stenging" ||
+    normalized === "stenging 1 etg" ||
+    normalized === "stenging 2 etg" ||
     normalized === "closing" ||
     normalized === "cierre"
   )
@@ -80,6 +85,16 @@ export default function OppgavevalgPage() {
   }
 
   function getTranslatedTaskListName(name: string) {
+    const normalized = normalizeListName(name)
+    if (
+      normalized === "åpning 1 etg" ||
+      normalized === "åpning 2 etg" ||
+      normalized === "diverse" ||
+      normalized === "stenging 1 etg" ||
+      normalized === "stenging 2 etg"
+    ) {
+      return name
+    }
     if (isOpeningList(name)) return t("opening")
     if (isDailyTasksList(name)) return t("dailyTasks")
     if (isClosingList(name)) return t("closing")
