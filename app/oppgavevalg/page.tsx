@@ -29,6 +29,9 @@ function isOpeningList(name: string) {
     normalized === "åpning" ||
     normalized === "åpning 1 etg" ||
     normalized === "åpning 2 etg" ||
+    normalized === "åpning 1 etasje" ||
+    normalized === "åpning 2 etasje" ||
+    normalized === "åpning kjeller" ||
     normalized === "opening" ||
     normalized === "apertura"
   )
@@ -51,6 +54,9 @@ function isClosingList(name: string) {
     normalized === "stenging" ||
     normalized === "stenging 1 etg" ||
     normalized === "stenging 2 etg" ||
+    normalized === "stenging 1 etasje" ||
+    normalized === "stenging 2 etasje" ||
+    normalized === "stenging kjeller" ||
     normalized === "closing" ||
     normalized === "cierre"
   )
@@ -96,9 +102,15 @@ export default function OppgavevalgPage() {
     if (
       normalized === "åpning 1 etg" ||
       normalized === "åpning 2 etg" ||
+      normalized === "åpning 1 etasje" ||
+      normalized === "åpning 2 etasje" ||
+      normalized === "åpning kjeller" ||
       normalized === "diverse" ||
       normalized === "stenging 1 etg" ||
-      normalized === "stenging 2 etg"
+      normalized === "stenging 2 etg" ||
+      normalized === "stenging 1 etasje" ||
+      normalized === "stenging 2 etasje" ||
+      normalized === "stenging kjeller"
     ) {
       return name
     }
