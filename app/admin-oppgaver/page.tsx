@@ -63,6 +63,20 @@ type DaysState = {
 
 type UiLanguage = "no" | "en" | "es" | "ru"
 
+const SKINS_VENUE_ID = "9302b7f7-300b-4373-9566-669412bc9383"
+const HUKEN_BRYGG_VENUE_ID = "f0610b10-4b2d-4e00-9c8c-7d5c9845be4c"
+
+function isHiddenForVenue(venueId: string, name: string): boolean {
+  const n = (name || "").trim().toLowerCase()
+  if (venueId === SKINS_VENUE_ID) {
+    return n === "åpning" || n === "daglige oppgaver" || n === "stenging"
+  }
+  if (venueId === HUKEN_BRYGG_VENUE_ID) {
+    return n === "åpning" || n === "stenging"
+  }
+  return false
+}
+
 const defaultDays: DaysState = {
   monday: true,
   tuesday: true,
@@ -654,11 +668,14 @@ export default function AdminOppgaverPage() {
         return
       }
 
-      setTaskLists(data)
+      const visibleLists = (data as TaskList[]).filter(
+        (list) => !isHiddenForVenue(selectedVenue, list.name)
+      )
+      setTaskLists(visibleLists)
 
-      if (data.length > 0 && !valgtListeId) {
-        const preferred = data.find(
-          (item: TaskList) =>
+      if (visibleLists.length > 0 && !valgtListeId) {
+        const preferred = visibleLists.find(
+          (item) =>
             item.name === "Andre oppgaver" ||
             item.name === "Other tasks" ||
             item.name === "Otras tareas" ||
@@ -666,7 +683,7 @@ export default function AdminOppgaverPage() {
             item.name === "Daily tasks" ||
             item.name === "Tareas diarias"
         )
-        setValgtListeId(preferred ? preferred.id : data[0].id)
+        setValgtListeId(preferred ? preferred.id : visibleLists[0].id)
       }
     } catch (err) {
       setFeil(`${text.fetchError}: ${String(err)}`)
@@ -697,7 +714,10 @@ export default function AdminOppgaverPage() {
         return
       }
 
-      setTasks(data)
+      const visibleTasks = (data as Task[]).filter(
+        (t) => !isHiddenForVenue(selectedVenue, t.task_lists?.name || "")
+      )
+      setTasks(visibleTasks)
     } catch (err) {
       setFeil(`${text.fetchError}: ${String(err)}`)
     }
