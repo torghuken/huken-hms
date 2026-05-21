@@ -301,3 +301,22 @@ export const translations = {
     fixOther: "Другое",
   },
 } as const
+
+const floorListNames: Record<string, Record<Language, string>> = {
+  "åpning 1 etg":      { no: "Åpning 1 etg",      en: "Opening 1st floor", es: "Apertura 1ª planta", ru: "Открытие 1 этаж" },
+  "åpning 2 etg":      { no: "Åpning 2 etg",      en: "Opening 2nd floor", es: "Apertura 2ª planta", ru: "Открытие 2 этаж" },
+  "åpning 1 etasje":   { no: "Åpning 1 etasje",   en: "Opening 1st floor", es: "Apertura 1ª planta", ru: "Открытие 1 этаж" },
+  "åpning 2 etasje":   { no: "Åpning 2 etasje",   en: "Opening 2nd floor", es: "Apertura 2ª planta", ru: "Открытие 2 этаж" },
+  "åpning kjeller":    { no: "Åpning kjeller",    en: "Opening basement",  es: "Apertura sótano",   ru: "Открытие подвал" },
+  "diverse":           { no: "Diverse",           en: "Miscellaneous",     es: "Varios",            ru: "Разное" },
+  "stenging 1 etg":    { no: "Stenging 1 etg",    en: "Closing 1st floor", es: "Cierre 1ª planta",  ru: "Закрытие 1 этаж" },
+  "stenging 2 etg":    { no: "Stenging 2 etg",    en: "Closing 2nd floor", es: "Cierre 2ª planta",  ru: "Закрытие 2 этаж" },
+  "stenging 1 etasje": { no: "Stenging 1 etasje", en: "Closing 1st floor", es: "Cierre 1ª planta",  ru: "Закрытие 1 этаж" },
+  "stenging 2 etasje": { no: "Stenging 2 etasje", en: "Closing 2nd floor", es: "Cierre 2ª planta",  ru: "Закрытие 2 этаж" },
+  "stenging kjeller":  { no: "Stenging kjeller",  en: "Closing basement",  es: "Cierre sótano",     ru: "Закрытие подвал" },
+}
+
+export function translateListName(name: string, language: Language): string | null {
+  const key = (name || "").trim().toLowerCase()
+  return floorListNames[key]?.[language] ?? null
+}

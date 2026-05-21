@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { isLeader } from "@/lib/session"
 import { useLanguage } from "@/lib/language"
+import { translateListName } from "@/lib/translations"
 
 type TaskList = {
   id: string
@@ -77,7 +78,7 @@ export default function OppgavevalgPage() {
   const [lagrerId, setLagrerId] = useState<string | null>(null)
 
   const router = useRouter()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
 
   useEffect(() => {
     const selectedVenue = localStorage.getItem("selectedVenue")
@@ -105,22 +106,8 @@ export default function OppgavevalgPage() {
   }
 
   function getTranslatedTaskListName(name: string) {
-    const normalized = normalizeListName(name)
-    if (
-      normalized === "åpning 1 etg" ||
-      normalized === "åpning 2 etg" ||
-      normalized === "åpning 1 etasje" ||
-      normalized === "åpning 2 etasje" ||
-      normalized === "åpning kjeller" ||
-      normalized === "diverse" ||
-      normalized === "stenging 1 etg" ||
-      normalized === "stenging 2 etg" ||
-      normalized === "stenging 1 etasje" ||
-      normalized === "stenging 2 etasje" ||
-      normalized === "stenging kjeller"
-    ) {
-      return name
-    }
+    const floor = translateListName(name, language)
+    if (floor) return floor
     if (isOpeningList(name)) return t("opening")
     if (isDailyTasksList(name)) return t("dailyTasks")
     if (isClosingList(name)) return t("closing")

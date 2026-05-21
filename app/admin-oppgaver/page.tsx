@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useLanguage } from "@/lib/language"
+import { translateListName } from "@/lib/translations"
 import {
   DndContext,
   PointerSensor,
@@ -394,7 +395,14 @@ function getTaskDisplayName(task: Task, language: UiLanguage) {
   return task.name_no || task.name
 }
 
-function getTaskListDisplayName(name: string, text: Record<string, string>) {
+function getTaskListDisplayName(
+  name: string,
+  text: Record<string, string>,
+  language: UiLanguage
+) {
+  const floor = translateListName(name, language)
+  if (floor) return floor
+
   const normalized = name.trim().toLowerCase()
 
   if (normalized === "åpning" || normalized === "opening" || normalized === "apertura") {
@@ -1166,7 +1174,7 @@ export default function AdminOppgaverPage() {
 
       await saveSortOrderForList(updatedMovedList)
       setStatus(
-        `${text.orderSavedFor} "${getTaskListDisplayName(listName, text)}"`
+        `${text.orderSavedFor} "${getTaskListDisplayName(listName, text, currentLanguage)}"`
       )
     } catch (err) {
       setFeil(`${text.error}: ${String(err)}`)
@@ -1221,7 +1229,7 @@ export default function AdminOppgaverPage() {
           className="flex w-full items-center justify-between rounded-2xl bg-zinc-800 px-5 py-4 text-left transition active:scale-[0.98]"
         >
           <span className="text-lg font-semibold">
-            {getTaskListDisplayName(title, text)}
+            {getTaskListDisplayName(title, text, currentLanguage)}
             <span className="ml-2 text-sm font-normal text-zinc-400">
               ({sectionTasks.length})
             </span>
@@ -1306,7 +1314,7 @@ export default function AdminOppgaverPage() {
               <option value="">{text.chooseTaskType}</option>
               {taskLists.map((list) => (
                 <option key={list.id} value={list.id}>
-                  {getTaskListDisplayName(list.name, text)}
+                  {getTaskListDisplayName(list.name, text, currentLanguage)}
                 </option>
               ))}
             </select>
