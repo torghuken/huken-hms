@@ -17,10 +17,17 @@ function normalizeListName(name: string) {
 }
 
 const SKINS_VENUE_ID = "9302b7f7-300b-4373-9566-669412bc9383"
+const HUKEN_BRYGG_VENUE_ID = "f0610b10-4b2d-4e00-9c8c-7d5c9845be4c"
 
-function isGenericSkinsList(name: string) {
+function isHiddenForVenue(venueId: string, name: string): boolean {
   const n = normalizeListName(name)
-  return n === "åpning" || n === "daglige oppgaver" || n === "stenging"
+  if (venueId === SKINS_VENUE_ID) {
+    return n === "åpning" || n === "daglige oppgaver" || n === "stenging"
+  }
+  if (venueId === HUKEN_BRYGG_VENUE_ID) {
+    return n === "åpning" || n === "stenging"
+  }
+  return false
 }
 
 function isOpeningList(name: string) {
@@ -152,10 +159,7 @@ export default function OppgavevalgPage() {
             isDailyTasksList(list.name) ||
             isClosingList(list.name)
         )
-        .filter(
-          (list) =>
-            !(selectedVenue === SKINS_VENUE_ID && isGenericSkinsList(list.name))
-        )
+        .filter((list) => !isHiddenForVenue(selectedVenue, list.name))
         .sort((a, b) => getListSortOrder(a.name) - getListSortOrder(b.name))
 
       setTaskLists(filtrerteLister)
