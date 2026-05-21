@@ -16,6 +16,13 @@ function normalizeListName(name: string) {
   return name.trim().toLowerCase()
 }
 
+const SKINS_VENUE_ID = "9302b7f7-300b-4373-9566-669412bc9383"
+
+function isGenericSkinsList(name: string) {
+  const n = normalizeListName(name)
+  return n === "åpning" || n === "daglige oppgaver" || n === "stenging"
+}
+
 function isOpeningList(name: string) {
   const normalized = normalizeListName(name)
   return (
@@ -132,6 +139,10 @@ export default function OppgavevalgPage() {
             isOpeningList(list.name) ||
             isDailyTasksList(list.name) ||
             isClosingList(list.name)
+        )
+        .filter(
+          (list) =>
+            !(selectedVenue === SKINS_VENUE_ID && isGenericSkinsList(list.name))
         )
         .sort((a, b) => getListSortOrder(a.name) - getListSortOrder(b.name))
 
