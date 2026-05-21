@@ -395,6 +395,20 @@ function getTaskDisplayName(task: Task, language: UiLanguage) {
   return task.name_no || task.name
 }
 
+function listCategoryRank(name: string): number {
+  const n = (name || "").trim().toLowerCase()
+  if (n.startsWith("åpning") || n === "opening" || n === "apertura") return 0
+  if (
+    n === "daglige oppgaver" ||
+    n === "diverse" ||
+    n === "daily tasks" ||
+    n === "tareas diarias"
+  )
+    return 1
+  if (n.startsWith("stenging") || n === "closing" || n === "cierre") return 2
+  return 3
+}
+
 function getTaskListDisplayName(
   name: string,
   text: Record<string, string>,
@@ -1187,35 +1201,20 @@ export default function AdminOppgaverPage() {
     }
   }
 
-  function isListMatch(taskListName: string | undefined, target: string) {
-    const n = (taskListName || "").trim().toLowerCase()
-    return n === target.toLowerCase()
-  }
-
-  const apningOppgaver = tasks
-    .filter((t) => t.active && isListMatch(t.task_lists?.name, "Åpning"))
-    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-
-  const dagligeOppgaver = tasks
-    .filter((t) => t.active && isListMatch(t.task_lists?.name, "Daglige oppgaver"))
-    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-
-  const stengingOppgaver = tasks
-    .filter((t) => t.active && isListMatch(t.task_lists?.name, "Stenging"))
-    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-
-  const knownNames = new Set(["åpning", "daglige oppgaver", "stenging"])
-  const andreListerOppgaver = tasks
-    .filter(
-      (task) =>
-        task.active &&
-        !knownNames.has((task.task_lists?.name || "").trim().toLowerCase())
+  const taskListGroups = Array.from(
+    new Set(
+      tasks
+        .filter((t) => t.active)
+        .map((t) => t.task_lists?.name || text.unknownCategory)
     )
+  )
+    .map((listName) => ({ listName, sectionTasks: getTasksForList(listName) }))
+    .filter((group) => group.sectionTasks.length > 0)
     .sort((a, b) => {
-      if (a.task_lists?.name !== b.task_lists?.name) {
-        return (a.task_lists?.name || "").localeCompare(b.task_lists?.name || "")
-      }
-      return (a.sort_order ?? 0) - (b.sort_order ?? 0)
+      const ra = listCategoryRank(a.listName)
+      const rb = listCategoryRank(b.listName)
+      if (ra !== rb) return ra - rb
+      return a.listName.localeCompare(b.listName)
     })
 
   function CollapsibleSection({ title, sectionTasks }: { title: string; sectionTasks: Task[] }) {
@@ -1436,34 +1435,13 @@ export default function AdminOppgaverPage() {
           </div>
         </div>
 
-        <CollapsibleSection title="Åpning" sectionTasks={apningOppgaver} />
-        <CollapsibleSection title="Daglige oppgaver" sectionTasks={dagligeOppgaver} />
-        <CollapsibleSection title="Stenging" sectionTasks={stengingOppgaver} />
-        {andreListerOppgaver.length > 0 && (
-          <div>
-            <h2 className="mb-3 text-xl font-semibold">{text.moreTasks}</h2>
-
-            <div className="space-y-6">
-              {Array.from(
-                new Set(
-                  andreListerOppgaver.map(
-                    (task) => task.task_lists?.name || text.unknownCategory
-                  )
-                )
-              ).map((listName) => {
-                const sectionTasks = andreListerOppgaver.filter(
-                  (task) => (task.task_lists?.name || text.unknownCategory) === listName
-                )
-
-                return (
-                  <div key={listName}>
-                    <CollapsibleSection title={listName} sectionTasks={sectionTasks} />
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
+        {taskListGroups.map((group) => (
+          <CollapsibleSection
+            key={group.listName}
+            title={group.listName}
+            sectionTasks={group.sectionTasks}
+          />
+        ))}
 
         <button
           type="button"
