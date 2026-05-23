@@ -87,6 +87,11 @@ function isClosingList(name: string) {
   const normalized = normalizeListName(name)
   return (
     normalized === "stenging" ||
+    normalized === "stenging 1 etg" ||
+    normalized === "stenging 2 etg" ||
+    normalized === "stenging 1 etasje" ||
+    normalized === "stenging 2 etasje" ||
+    normalized === "stenging kjeller" ||
     normalized === "closing" ||
     normalized === "cierre"
   )
@@ -166,19 +171,19 @@ export default function StengingLoggPage() {
         return
       }
 
-      const closingList = (listData as Array<{ id: string; name: string }>).find(
+      const closingLists = (listData as Array<{ id: string; name: string }>).filter(
         (list) => isClosingList(list.name)
       )
 
-      if (!closingList) {
+      if (closingLists.length === 0) {
         setFeil(`${t("error")}: ${t("closing")} ${text.notFoundForVenue}`)
         return
       }
 
-      const listId = closingList.id
+      const listIds = closingLists.map((l) => l.id).join(",")
 
       const taskRes = await fetch(
-        `${url}/rest/v1/tasks?select=id,name,name_no,name_en,name_es,name_ru,list_id,task_lists!inner(id,name,venue_id)&list_id=eq.${listId}&task_lists.venue_id=eq.${selectedVenue}`,
+        `${url}/rest/v1/tasks?select=id,name,name_no,name_en,name_es,name_ru,list_id,task_lists!inner(id,name,venue_id)&list_id=in.(${listIds})&task_lists.venue_id=eq.${selectedVenue}`,
         {
           headers: {
             apikey: key,

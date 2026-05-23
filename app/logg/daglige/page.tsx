@@ -92,8 +92,10 @@ function isDailyTasksList(name: string) {
   const normalized = normalizeListName(name)
   return (
     normalized === "daglige oppgaver" ||
+    normalized === "diverse" ||
     normalized === "daily tasks" ||
-    normalized === "tareas diarias"
+    normalized === "tareas diarias" ||
+    normalized === "ежедневные задачи"
   )
 }
 
@@ -171,19 +173,19 @@ export default function DagligeLoggPage() {
         return
       }
 
-      const dailyList = (listData as Array<{ id: string; name: string }>).find(
+      const dailyLists = (listData as Array<{ id: string; name: string }>).filter(
         (list) => isDailyTasksList(list.name)
       )
 
-      if (!dailyList) {
+      if (dailyLists.length === 0) {
         setFeil(`${t("error")}: ${text.title} ${text.notFoundForVenue}`)
         return
       }
 
-      const listId = dailyList.id
+      const listIds = dailyLists.map((l) => l.id).join(",")
 
       const taskRes = await fetch(
-        `${url}/rest/v1/tasks?select=id,name,name_no,name_en,name_es,name_ru,list_id,task_lists!inner(id,name,venue_id)&list_id=eq.${listId}&task_lists.venue_id=eq.${selectedVenue}`,
+        `${url}/rest/v1/tasks?select=id,name,name_no,name_en,name_es,name_ru,list_id,task_lists!inner(id,name,venue_id)&list_id=in.(${listIds})&task_lists.venue_id=eq.${selectedVenue}`,
         {
           headers: {
             apikey: key,

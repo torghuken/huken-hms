@@ -87,6 +87,11 @@ function isOpeningList(name: string) {
   const normalized = normalizeListName(name)
   return (
     normalized === "åpning" ||
+    normalized === "åpning 1 etg" ||
+    normalized === "åpning 2 etg" ||
+    normalized === "åpning 1 etasje" ||
+    normalized === "åpning 2 etasje" ||
+    normalized === "åpning kjeller" ||
     normalized === "opening" ||
     normalized === "apertura"
   )
@@ -166,19 +171,19 @@ export default function ApningLoggPage() {
         return
       }
 
-      const openingList = (listData as Array<{ id: string; name: string }>).find(
+      const openingLists = (listData as Array<{ id: string; name: string }>).filter(
         (list) => isOpeningList(list.name)
       )
 
-      if (!openingList) {
+      if (openingLists.length === 0) {
         setFeil(`${t("error")}: ${t("opening")} ${text.notFoundForVenue}`)
         return
       }
 
-      const listId = openingList.id
+      const listIds = openingLists.map((l) => l.id).join(",")
 
       const taskRes = await fetch(
-        `${url}/rest/v1/tasks?select=id,name,name_no,name_en,name_es,name_ru,list_id,task_lists!inner(id,name,venue_id)&list_id=eq.${listId}&task_lists.venue_id=eq.${selectedVenue}`,
+        `${url}/rest/v1/tasks?select=id,name,name_no,name_en,name_es,name_ru,list_id,task_lists!inner(id,name,venue_id)&list_id=in.(${listIds})&task_lists.venue_id=eq.${selectedVenue}`,
         {
           headers: {
             apikey: key,
